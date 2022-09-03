@@ -1,0 +1,5 @@
+commontypes/Command.class
+commontypes/Account.class
+commontypes/exceptions/AccountDoesNotExistException.class
+commontypes/Message.class
+commontypes/AccountOperation.class
