@@ -21,7 +21,7 @@ public class ClientController {
     public static ClientService CLIENT_SERVICE = ClientService.getInstance();
 
 
-    public ClientController(Boolean isMalicious, int clientNumber) {
+    public ClientController(Boolean isMalicious, String clientNumber) {
         CLIENT_SERVICE.setIsMalicious(isMalicious);
         CLIENT_SERVICE.setMyClientNumber(clientNumber);
     }
@@ -30,12 +30,14 @@ public class ClientController {
     static void listCommands() {
 
         System.out.println();
+        System.out.println("******************************************************************************************************");
         System.out.print("Available commands: " + "\n"
                 + "open : create a new account" + "\n"
-                + "check : obtain account balance and list of pending incoming transfers" + "\n"
-                + "audit : obtain the full transaction history" + "\n"
+                + "check : obtain account balance, the full transaction history and list of pending incoming transfers" + "\n"
                 + "send : send a certain amount to another account" + "\n"
                 + "receive : accept a pending incoming transfer");
+        System.out.println();
+        System.out.println("*******************************************************************************************************");
 
         System.out.println();
     }
@@ -66,21 +68,15 @@ public class ClientController {
                     CLIENT_SERVICE.checkAccount();
                     break;
 
-                case AUDIT:
-                    CLIENT_SERVICE.auditAccount();
-                    break;
-
                 case SEND:
                     System.out.println("Insert the path to the public key of the destination");
                     String keyPath = scan.next();
-                    PublicKey destination = crypto.RSAKeyGen.readPub(keyPath);
-
 
                     System.out.println("Insert the amount you wish to transfer");
                     long amount;
                     amount = Long.parseLong(scan.next());
 
-                    CLIENT_SERVICE.sendAmount(destination,amount);
+                    CLIENT_SERVICE.sendAmount(keyPath,amount);
                     break;
 
                 case RECEIVE:

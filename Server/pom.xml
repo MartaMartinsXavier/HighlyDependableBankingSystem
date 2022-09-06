@@ -7,6 +7,12 @@
         <groupId>org.example</groupId>
         <version>1.0-SNAPSHOT</version>
     </parent>
+    <properties>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
+        <mode>r</mode>
+        <myNumber>0</myNumber>
+    </properties>
     <build>
         <plugins>
             <plugin>
@@ -18,16 +24,15 @@
                 </execution></executions>
                 <configuration>
                     <mainClass>server.ServerApp</mainClass>
+                    <arguments>
+                        <argument>${mode}</argument>
+                        <argument>${myNumber}</argument>
+                    </arguments>
                 </configuration>
             </plugin>
         </plugins>
     </build>
     <modelVersion>4.0.0</modelVersion>
-    <properties>
-        <maven.compiler.source>11</maven.compiler.source>
-        <maven.compiler.target>11</maven.compiler.target>
-    </properties>
-
     <artifactId>Server</artifactId>
     <dependencies>
         <dependency>

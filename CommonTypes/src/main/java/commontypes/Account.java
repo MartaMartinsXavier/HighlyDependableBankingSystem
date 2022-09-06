@@ -1,6 +1,7 @@
 package commontypes;
 
 import java.io.Serializable;
+import java.lang.reflect.Field;
 import java.security.PublicKey;
 import java.util.ArrayList;
 
@@ -9,19 +10,20 @@ import java.util.ArrayList;
  */
 public class Account implements Serializable {
     private PublicKey publicKey;
+    private final long initialBalance = 20;
     private long balance;
     private ArrayList<AccountOperation> pendingTransactions;
+    private ArrayList<AccountOperation> outgoingTransactions;
     private ArrayList<AccountOperation> accountOpHistory;
 
 
     public Account(PublicKey publicKey) {
         this.publicKey = publicKey;
-        this.balance = 10;
+        this.balance = initialBalance;
         this.accountOpHistory = new ArrayList<>();
+        this.outgoingTransactions = new ArrayList<>();
         this.pendingTransactions = new ArrayList<>();
     }
-
-
 
     public PublicKey getPublicKey() {
         return publicKey;
@@ -29,6 +31,10 @@ public class Account implements Serializable {
 
     public void setPublicKey(PublicKey publicKey) {
         this.publicKey = publicKey;
+    }
+
+    public long getInitialBalance() {
+        return initialBalance;
     }
 
     public long getBalance() {
@@ -61,6 +67,14 @@ public class Account implements Serializable {
         this.accountOpHistory = accountOpHistory;
     }
 
+    public ArrayList<AccountOperation> getOutgoingTransactions() {
+        return outgoingTransactions;
+    }
+
+    public void addOutgoingTransactions(AccountOperation outgoingTransactions) {
+        this.outgoingTransactions.add(outgoingTransactions);
+    }
+    
     public void addPendingTransaction(AccountOperation accountOperation){
         this.pendingTransactions.add(accountOperation);
 
@@ -76,5 +90,7 @@ public class Account implements Serializable {
         Account other = (Account) obj;
         return publicKey.equals(other.publicKey);
     }
+
+
 
 }

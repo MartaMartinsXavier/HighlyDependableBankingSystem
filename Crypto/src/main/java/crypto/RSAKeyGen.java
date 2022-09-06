@@ -18,18 +18,20 @@ public class RSAKeyGen {
         public static void main(String[] args) throws Exception {
 
             // check args
-            if (args.length != 3) {
-                System.err.println("Usage: RSAKeyGenerator numberOfClients <priv-key-file> <pub-key-file>");
+            if (args.length != 1) {
+                System.err.println("Usage: RSAKeyGenerator numberOfClients");
                 return;
             }
 
             final int numberOfClients = Integer.parseInt(args[0]);
-            final String privkeyPath = args[1];
-            final String pubkeyPath = args[2];
+
+
+            String privkeyPath = "../Client/src/main/java/clientPrivateKey";
+            String pubkeyPath = "../CommonTypes/src/main/java/clientPublicKey";
 
 
             System.out.println("Generate server key pair");
-            write("../Server/src/main/java/PrivateKey", "../Server/src/main/java/PublicKey");
+            write("../Server/src/main/java/serverPrivateKey", "../CommonTypes/src/main/java/serverPublicKey");
 
 
             for(int i =0 ; i <numberOfClients; i++){

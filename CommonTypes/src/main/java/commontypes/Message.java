@@ -15,7 +15,7 @@ public class Message implements Serializable {
     private String nonce;
     private String signature;
     private AccountOperation transferDetails;
-    private Account accountToCheckOrAudit;
+    private Account accountToCheck;
     private String errorMessage;
 
 
@@ -78,12 +78,12 @@ public class Message implements Serializable {
         this.transferDetails = transferDetails;
     }
 
-    public Account getAccountToCheckOrAudit() {
-        return accountToCheckOrAudit;
+    public Account getAccountToCheck() {
+        return accountToCheck;
     }
 
-    public void setAccountToCheckOrAudit(Account accountToCheckOrAudit) {
-        this.accountToCheckOrAudit = accountToCheckOrAudit;
+    public void setAccountToCheck(Account accountToCheck) {
+        this.accountToCheck = accountToCheck;
     }
 
     public String getErrorMessage() {

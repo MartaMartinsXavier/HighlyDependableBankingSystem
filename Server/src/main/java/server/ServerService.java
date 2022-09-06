@@ -31,7 +31,7 @@ public class ServerService {
     public Message process(Message message) {
 
         Message reply = null;
-        System.out.println("message that arrived from the client");
+        System.out.println("message that arrived from the client :");
         System.out.println(message);
 
 
@@ -51,10 +51,6 @@ public class ServerService {
                 reply = checkAccount(message);
                 break;
 
-            case AUDIT:
-                reply = auditAccount(message);
-                break;
-
             case SEND:
                 reply = sendAmount(message);
                 break;
@@ -68,9 +64,18 @@ public class ServerService {
                 break;
         }
 
-        return reply;
-    }
 
+
+        if (reply ==null)
+            return null;
+        try {
+            return signMessage(reply);
+        } catch (CryptoException e) {
+            System.out.println("failed to sign message ");
+            return null;
+
+        }
+    }
 
 
     /* **************************************************************************************
@@ -85,8 +90,7 @@ public class ServerService {
             System.out.println("Signature authentication failed");
             return createErrorMessage("Signature authentication failed.", message.getPublicKey());
         }
-
-        System.out.println(message);
+        
         if(findAccount(message.getPublicKey()) != null) {
             System.out.println("Account already exists");
             return createErrorMessage("Account already exists.", message.getPublicKey());
@@ -97,8 +101,7 @@ public class ServerService {
 
         Message messageToReply = createBaseMessage(message.getPublicKey(),Command.OPEN );
 
-        System.out.println("nuMba of accounts");
-        System.out.println(allAccounts.size());
+        System.out.println("number of client accounts : " + allAccounts.size());
 
         return messageToReply;
 
@@ -115,28 +118,9 @@ public class ServerService {
         if(accountToCheck == null)
             return createErrorMessage("Account does not exist.", message.getPublicKey());
 
-
         Message messageToReply = createBaseMessage(message.getPublicKey(),Command.CHECK);
 
-        messageToReply.setAccountToCheckOrAudit(accountToCheck);
-
-        return messageToReply;
-    }
-
-
-    public Message auditAccount(Message message){
-
-        if(!isSignatureValid(message,message.getPublicKey()))
-            return createErrorMessage("Signature authentication failed.", message.getPublicKey());
-
-
-        Account accountToCheck = findAccount(message.getPublicKey());
-        if(accountToCheck == null)
-            return createErrorMessage("Account does not exist.", message.getPublicKey());
-
-        Message messageToReply = createBaseMessage(message.getPublicKey(),Command.AUDIT);
-
-        messageToReply.setAccountToCheckOrAudit(accountToCheck);
+        messageToReply.setAccountToCheck(accountToCheck);
 
         return messageToReply;
 
@@ -148,16 +132,21 @@ public class ServerService {
         if(!isSignatureValid(message,message.getPublicKey()))
             return createErrorMessage("Signature authentication failed.", message.getPublicKey());
 
-        Account accountToCheck = findAccount(message.getPublicKey());
-        if(accountToCheck == null)
+        Account senderAccount = findAccount(message.getPublicKey());
+        if(senderAccount == null)
             return createErrorMessage("Account does not exist.", message.getPublicKey());
 
         long transactionID = message.getTransferDetails().getTransactionID();
         PublicKey sender = message.getTransferDetails().getSender();
         PublicKey dest = message.getTransferDetails().getDest();
         long amount = message.getTransferDetails().getAmount();
+        AccountOperation accountOperation= message.getTransferDetails();
 
-        AccountOperation accountOperation= new AccountOperation(transactionID);
+        if (!(amount > 0))
+            return createErrorMessage("Invalid amount", message.getPublicKey());
+
+        if (dest == null)
+            return createErrorMessage("Invalid destination provided", message.getPublicKey());
 
         if (transactionIDExists(transactionID)) {
             return createErrorMessage("Invalid transactionID.", message.getPublicKey());
@@ -170,13 +159,18 @@ public class ServerService {
             return createErrorMessage("you cannot transfer funds from someone else", message.getPublicKey());
         }
 
-        if (amount > accountToCheck.getBalance()) {
+        if (amount > senderAccount.getBalance()) {
             return createErrorMessage("Not enough funds.", message.getPublicKey());
         }
+        if (findAccount(dest) == null) {
+            return createErrorMessage("you cannot transfer funds from someone else", message.getPublicKey());
+        }
 
-        accountToCheck.setBalance(accountToCheck.getBalance() - amount);
+        senderAccount.setBalance(senderAccount.getBalance() - amount);
 
+        senderAccount.addOutgoingTransactions(accountOperation);
 
+        //adding transaction to the destination's pending transactions
         findAccount(dest).addPendingTransaction(accountOperation);
 
 
@@ -213,10 +207,11 @@ public class ServerService {
         pendingTrans.remove(accountOpToReceive);
         accountToCheck.setBalance(accountToCheck.getBalance() + accountOpToReceive.getAmount());
         accountToCheck.addAccountOpHistory(accountOpToReceive);
+        findAccount(accountOpToReceive.getSender()).addAccountOpHistory(accountOpToReceive);
 
 
-        Message messageToReply = createBaseMessage(message.getPublicKey(),Command.SEND);
-        messageToReply.setAccountToCheckOrAudit(accountToCheck);
+        Message messageToReply = createBaseMessage(message.getPublicKey(),Command.RECEIVE);
+        messageToReply.setAccountToCheck(accountToCheck);
 
         return messageToReply;
 
@@ -290,17 +285,6 @@ public class ServerService {
 
         addFreshness(messageToSend);
 
-        try {
-            signMessage(messageToSend);
-        } catch (CryptoException e) {
-            e.printStackTrace();
-        }
-
-        try {
-            return signMessage(messageToSend);
-        } catch (CryptoException e) {
-            e.printStackTrace();
-        }
         return messageToSend;
     }
 
@@ -359,7 +343,7 @@ public class ServerService {
     private Message signMessage(Message messageToSend) throws CryptoException {
         String signature = null;
         try {
-            signature = Crypto.sign(messageToSend.getBytesToSign(), crypto.RSAKeyGen.readPriv(keyPath + "PrivateKey"));
+            signature = Crypto.sign(messageToSend.getBytesToSign(), crypto.RSAKeyGen.readPriv(keyPath + "serverPrivateKey"));
         } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException e) {
             e.printStackTrace();
         }

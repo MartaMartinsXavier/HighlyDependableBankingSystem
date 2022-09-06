@@ -5,7 +5,6 @@ import java.io.Serializable;
 public enum Command implements Serializable {
     OPEN("open"),
     CHECK("check"),
-    AUDIT("audit"),
     SEND("send"),
     RECEIVE("receive"),
     ERROR("error");

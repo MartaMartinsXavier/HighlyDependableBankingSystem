@@ -29,6 +29,8 @@ public class ServerCommunication {
 
         try{
             System.out.println("init");
+            System.out.println("***********************************************************");
+            System.out.println();
             Socket clientSocket = serverSocket.accept();
             System.out.println("Received request, running socket on port: " + clientSocket.getLocalPort());
 

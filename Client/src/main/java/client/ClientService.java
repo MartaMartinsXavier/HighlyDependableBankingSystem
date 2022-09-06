@@ -4,18 +4,12 @@ import commontypes.AccountOperation;
 import commontypes.Message;
 import commontypes.Command;
 import commontypes.Account;
-import commontypes.exceptions.*;
 
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.security.Key;
-import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
-import java.security.spec.PKCS8EncodedKeySpec;
-import java.security.spec.X509EncodedKeySpec;
-import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Random;
 import crypto.Crypto;
 import crypto.exceptions.*;
@@ -25,17 +19,18 @@ import static java.lang.System.currentTimeMillis;
 public class ClientService {
     Random random = new Random();
 
-    private static String keyPath = "src/main/java/";
+    private static String myPrivKeyPath = "src/main/java/";
+    private static String pubKeyPath = "../CommonTypes/src/main/java/";
 
     private static final int MAX_TIMESTAMP = 10000;
 
     static boolean isMalicious;
-    static int myClientNumber;
+    static String myClientNumber;
 
     ClientCommunication communication = new ClientCommunication();
 
 
-    public static void setMyClientNumber(int myClientNumber) {
+    public static void setMyClientNumber(String myClientNumber) {
         ClientService.myClientNumber = myClientNumber;
     }
     public static void setIsMalicious(boolean isMalicious) {
@@ -64,6 +59,7 @@ public class ClientService {
         messageToSend.setOperationCode(Command.OPEN);
 
 
+
         if (isMalicious){
             System.out.println("sending malicious message");
             Message response = communication.sendMaliciousDupMessage(messageToSend);
@@ -83,9 +79,13 @@ public class ClientService {
             return;
         }
 
-        if (!isSignatureValid(response)) {
-            System.out.println("Bank signature validation failed");
-            return;
+        try {
+            if (!isSignatureValid(response)) {
+                System.out.println("Bank signature validation failed");
+                return;
+            }
+        } catch (CryptoException e) {
+            throw new RuntimeException(e);
         }
 
 
@@ -97,7 +97,7 @@ public class ClientService {
         }
 
     }
-
+/*
     public void checkAccount() {
         Message messageToSend = createBaseMessage();
         messageToSend.setOperationCode(Command.CHECK);
@@ -117,9 +117,13 @@ public class ClientService {
             return;
         }
 
-        if (!isSignatureValid(response)) {
-            System.out.println("Bank signature validation failed");
-            return;
+        try {
+            if (!isSignatureValid(response)) {
+                System.out.println("Bank signature validation failed");
+                return;
+            }
+        } catch (CryptoException e) {
+            throw new RuntimeException(e);
         }
 
 
@@ -150,11 +154,12 @@ public class ClientService {
         }
 
     }
+    */
 
 
-    public void auditAccount(){
+    public void checkAccount(){
         Message messageToSend = createBaseMessage();
-        messageToSend.setOperationCode(Command.AUDIT);
+        messageToSend.setOperationCode(Command.CHECK);
         if (isMalicious) {
             Message response = communication.sendMaliciousDupMessage(messageToSend);
         }
@@ -168,47 +173,98 @@ public class ClientService {
             System.out.println("Bank response is not fresh");
             return;
         }
-        if (!isSignatureValid(response)) {
-            System.out.println("Bank signature validation failed");
-            return;
+        try {
+            if (!isSignatureValid(response)) {
+                System.out.println("Bank signature validation failed");
+                return;
+            }
+        } catch (CryptoException e) {
+            throw new RuntimeException(e);
         }
 
 
-        if (response.getOperationCode().equals(Command.AUDIT)) {
-            Account accountToAudit = response.getAccountToCheckOrAudit();
+        if (response.getOperationCode().equals(Command.CHECK)) {
+            Account accountToCheck = response.getAccountToCheck();
 
             System.out.println("Account access was successful ");
 
+            System.out.println("Server value for balance: " + accountToCheck.getBalance());
 
-            if(accountToAudit.getAccountOpHistory().size() ==0){
-                System.out.println("You have no past transactions");
-                return;
+
+            long balanceResult = accountToCheck.getInitialBalance();
+
+            for (AccountOperation transaction : accountToCheck.getAccountOpHistory()) {
+                //if i am not the sender, then I increase my balance
+                if (!transaction.getSender().equals(getMyPublicKey())){
+                        balanceResult += transaction.getAmount();
+                }
+
             }
-            System.out.println("History of all Transactions");
-            for (AccountOperation transaction : accountToAudit.getAccountOpHistory()) {
+            //if i am the sender
+            for (AccountOperation transaction : accountToCheck.getOutgoingTransactions()) {
+                balanceResult -= transaction.getAmount();
 
-                System.out.println("* Transaction : " + transaction.getTransactionID()
-                        + " Amount : " + transaction.getAmount()
-                        + " Sender : " + transaction.getSender()
-                        + " Receiver: " + transaction.getDest());
+            }
+            //return current balance
+            System.out.println();
+            System.out.println("----------------------------------- ");
+            System.out.println("Account balance is : " + balanceResult);
+            System.out.println("-----------------------------------");
+
+
+            // all past executed transactions
+            if(accountToCheck.getAccountOpHistory().size() ==0){
+                System.out.println("-----------------------------------");
+                System.out.println("You have no past transactions");
+                System.out.println("-----------------------------------");
+
+            }
+            else{
+                System.out.println("-----------------------------------");
+                System.out.println("History of all Transactions");
+                System.out.println("-----------------------------------");
+                for (AccountOperation transaction : accountToCheck.getAccountOpHistory()) {
+                    System.out.println("* Transaction : " + transaction.getTransactionID() + "\t"
+                        + " Amount : " + transaction.getAmount() + "    "
+                        + " Sender : " + transaction.getPathToPubKeySender() + "    "
+                        + " Receiver: " + transaction.getPathToPubKeyDest());
+                }
+            }
+
+            // all pending transactions
+            if(accountToCheck.getPendingTransactions().size() ==0){
+                System.out.println("-----------------------------------");
+                System.out.println("You have no pending transactions ");
+                System.out.println("-----------------------------------");
+            }
+            else{
+                System.out.println("-----------------------------------");
+                System.out.println("Pending Transactions");
+                System.out.println("-----------------------------------");
+                for (AccountOperation transaction : accountToCheck.getPendingTransactions()) {
+
+                    System.out.println("* Transaction : " + transaction.getTransactionID() + "    "
+                            + " Amount : " + transaction.getAmount() + "    "
+                            + " Sender : " + transaction.getPathToPubKeySender());
+                }
             }
 
         } else if (response.getOperationCode().equals(Command.ERROR)) {
             System.out.println(response.getErrorMessage());
-
-            return;
         }
-
     }
 
 
-    public void sendAmount(PublicKey keyDest, long amount) {
+    public void sendAmount(String keyPath, long amount) {
         Message messageToSend = createBaseMessage();
+
+        PublicKey keyDest = getOthersPublicKey(keyPath);
 
         AccountOperation transfer = null;
         try {
-            transfer = new AccountOperation(amount, crypto.RSAKeyGen.readPub(keyPath + "PublicKey"+ myClientNumber), keyDest);
-        } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException e) {
+            transfer = new AccountOperation(amount, getMyPublicKey(), myClientNumber, keyDest, keyPath);
+            signAccountOperation(transfer);
+        } catch (CryptoException e) {
             e.printStackTrace();
         }
 
@@ -233,18 +289,22 @@ public class ClientService {
             return;
         }
 
-        if (!isSignatureValid(response)) {
-            System.out.println("Bank signature validation failed");
-            return;
+        try {
+            if (!isSignatureValid(response)) {
+                System.out.println("Bank signature validation failed");
+                return;
+            }
+        } catch (CryptoException e) {
+            throw new RuntimeException(e);
         }
 
 
         if (response.getOperationCode().equals(Command.SEND)) {
 
             AccountOperation op = response.getTransferDetails();
-            System.out.println("Your transaction " + op.getTransactionID() + " is pending "
-                    + " Amount sent: " + op.getAmount()
-                    + " " + op.getDest() + " now has to accept your transaction");
+            System.out.println("Your transaction " + op.getTransactionID() + " is pending    "
+                    + " Amount sent " + op.getAmount() + "    "
+                    + " " + keyPath + " now has to accept your transaction");
 
 
         } else if (response.getOperationCode().equals(Command.ERROR)) {
@@ -281,19 +341,23 @@ public class ClientService {
             return;
         }
 
-        if (!isSignatureValid(response)) {
-            System.out.println("Bank signature validation failed");
-            return;
+        try {
+            if (!isSignatureValid(response)) {
+                System.out.println("Bank signature validation failed");
+                return;
+            }
+        } catch (CryptoException e) {
+            System.out.println("Error while trying to verify signature");
+            throw new RuntimeException(e);
         }
 
 
         if (response.getOperationCode().equals(Command.RECEIVE)) {
-            AccountOperation op = response.getTransferDetails();
+            Account myAccount = response.getAccountToCheck();
 
-            System.out.println("Transaction " + op.getTransactionID() + " completed");
+            System.out.println("Transaction " + transferToReceiveID + " completed");
 
-            System.out.println("You have successfully received " + op.getAmount()
-                    + " from " + op.getSender());
+            System.out.println("Your new balance is " + myAccount.getBalance());
 
 
         } else if (response.getOperationCode().equals(Command.ERROR)) {
@@ -302,7 +366,6 @@ public class ClientService {
         }
 
     }
-
 
 
 
@@ -318,7 +381,7 @@ public class ClientService {
     public Message createBaseMessage(){
 
         try {
-            Message messageToSend = new Message(crypto.RSAKeyGen.readPub(keyPath + "PublicKey"+ myClientNumber));
+            Message messageToSend = new Message(crypto.RSAKeyGen.readPub(pubKeyPath + "clientPublicKey"+ myClientNumber));
 
             addFreshness(messageToSend);
             signMessage(messageToSend);
@@ -326,6 +389,26 @@ public class ClientService {
             return messageToSend;
 
         } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException | CryptoException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+
+    private PublicKey getMyPublicKey() {
+        try {
+            return crypto.RSAKeyGen.readPub(pubKeyPath + "clientPublicKey"+ myClientNumber);
+        } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+
+    private PublicKey getOthersPublicKey(String keyPath) {
+        try {
+            return crypto.RSAKeyGen.readPub(pubKeyPath + keyPath);
+        } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException e) {
             e.printStackTrace();
             return null;
         }
@@ -351,7 +434,7 @@ public class ClientService {
     private Message signMessage(Message messageToSend) throws CryptoException {
         String signature = null;
         try {
-            signature = Crypto.sign(messageToSend.getBytesToSign(), crypto.RSAKeyGen.readPriv(keyPath + "PrivateKey"+myClientNumber));
+            signature = Crypto.sign(messageToSend.getBytesToSign(), crypto.RSAKeyGen.readPriv(myPrivKeyPath + "clientPrivateKey"+myClientNumber));
         } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException e) {
             e.printStackTrace();
         }
@@ -359,6 +442,17 @@ public class ClientService {
         return messageToSend;
     }
 
+
+    private AccountOperation signAccountOperation(AccountOperation accountOperation) throws CryptoException {
+        String signature = null;
+        try {
+            signature = Crypto.sign(accountOperation.getBytesToSign(), crypto.RSAKeyGen.readPriv(myPrivKeyPath + "clientPrivateKey"+myClientNumber));
+        } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException e) {
+            e.printStackTrace();
+        }
+        accountOperation.setSenderSignature(signature);
+        return accountOperation;
+    }
 
 
     /**
@@ -379,10 +473,22 @@ public class ClientService {
      * @param message signed message
      * @return true if valid, false otherwise
      */
-    private boolean isSignatureValid(Message message){
-        return true;
+    private boolean isSignatureValid(Message message) throws CryptoException {
+
+        PublicKey serverKey = null;
+        boolean isValid= false;
+
+        try {
+            serverKey = crypto.RSAKeyGen.readPub(pubKeyPath + "serverPublicKey");
+        } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException e) {
+            e.printStackTrace();
+        }
+        isValid = Crypto.verifySignature(message.getBytesToSign(), message.getSignature(), serverKey);
+
+
+        System.out.println("is signature valid:" +  isValid);
+        return isValid;
+
     }
-
-
 
 }

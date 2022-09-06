@@ -38,13 +38,12 @@
                     <mainClass>crypto.RSAKeyGen</mainClass>
                     <arguments>
                         <argument>${numberOfClients}</argument>
-                        <argument>../Client/src/main/java/PrivateKey</argument>
-                        <argument>../Client/src/main/java/PublicKey</argument>
                     </arguments>
                 </configuration>
             </plugin>
         </plugins>
     </build>
+
 
 
 

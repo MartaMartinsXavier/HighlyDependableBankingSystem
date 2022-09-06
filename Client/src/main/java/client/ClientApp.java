@@ -9,16 +9,18 @@ public class ClientApp {
 
         // check args
         if (args.length != 2) {
-            System.err.println("Usage: RSAKeyGenerator [r|m] myClientNumber");
+            System.err.println("Usage: [r|m] myClientNumber");
             return;
         }
 
         final String mode = args[0];
-        final int myClientNumber = Integer.parseInt(args[1]);
+        final String myClientNumber = args[1];
+        System.out.println("my client number is:" + myClientNumber );
 
 
         if (mode.toLowerCase().startsWith("m")) {
-            System.out.println("malicious client running");
+            System.out.println("malicious client running!");
+
             startClientController(true, myClientNumber);
         } else {
             System.out.println("regular honest client running");
@@ -31,7 +33,7 @@ public class ClientApp {
 
 
 
-    public static void startClientController(boolean isMalicious, int myClientNumber) {
+    public static void startClientController(boolean isMalicious, String myClientNumber) {
         ClientController clientController = new ClientController(isMalicious, myClientNumber);
 
         while (true) {
