@@ -6,6 +6,7 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.security.PublicKey;
+import java.util.Objects;
 
 public class Message implements Serializable {
 
@@ -167,6 +168,27 @@ public class Message implements Serializable {
         return result.toString();
     }
 
+
+    //compares two messages that come from the server
+    public boolean messageComparatorForClient(Message message) {
+        if(this == message)
+            return true;
+
+        if (!(this.getOperationCode() == message.getOperationCode()))
+            return false;
+
+        //verifies if any of the objects is null and then compares
+        if (!(Objects.equals(this.getAccountToCheck(), message.getAccountToCheck())))
+            return false;
+
+        if (!(Objects.equals(this.getTransferDetails(), message.getTransferDetails())))
+            return false;
+
+        if (!(Objects.equals(this.getErrorMessage(), message.getErrorMessage())))
+            return false;
+
+        return true;
+    }
 }
 
 

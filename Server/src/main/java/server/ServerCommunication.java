@@ -1,5 +1,6 @@
 package server;
 
+import commontypes.CommonTypes;
 import commontypes.Message;
 
 import java.io.IOException;
@@ -9,18 +10,22 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 public class ServerCommunication {
-    public static final int port = 5001;
+    public int initialPort;
 
     ServerSocket serverSocket;
-    ServerService service = new ServerService();
+    ServerService service;
 
 
-    public ServerCommunication(){
+
+    public ServerCommunication(int myServerID){
         try {
-            serverSocket = new ServerSocket(port);
+            serverSocket = new ServerSocket(CommonTypes.getInitialPort() + myServerID);
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        service = new ServerService(myServerID);
+
     }
 
 

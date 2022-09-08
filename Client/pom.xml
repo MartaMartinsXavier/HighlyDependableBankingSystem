@@ -12,6 +12,7 @@
         <maven.compiler.target>11</maven.compiler.target>
         <mode>r</mode>
         <myNumber>0</myNumber>
+        <byzantine>1</byzantine>
     </properties>
     <modelVersion>4.0.0</modelVersion>
 
@@ -29,6 +30,7 @@
                     <arguments>
                         <argument>${mode}</argument>
                         <argument>${myNumber}</argument>
+                        <argument>${byzantine}</argument>
                     </arguments>
                 </configuration>
             </plugin>

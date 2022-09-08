@@ -36,7 +36,9 @@ public class ClientService {
     public static void setIsMalicious(boolean isMalicious) {
         ClientService.isMalicious = isMalicious;
     }
-
+    public static String getMyClientNumber(){
+        return myClientNumber;
+    }
 
     private static ClientService clientService = null;
 
@@ -62,30 +64,15 @@ public class ClientService {
 
         if (isMalicious){
             System.out.println("sending malicious message");
-            Message response = communication.sendMaliciousDupMessage(messageToSend);
+            Message response = communication.evilBroadcastToSomeServers(messageToSend);
         }
 
-        Message response = communication.sendMessage(messageToSend);
+        Message response = communication.broadcastToAllServers(messageToSend);
 
 
         if (response == null){
             System.out.println("No reply from the server");
             return;
-        }
-
-
-        if(!isFresh(response)){
-            System.out.println("Bank response is not fresh");
-            return;
-        }
-
-        try {
-            if (!isSignatureValid(response)) {
-                System.out.println("Bank signature validation failed");
-                return;
-            }
-        } catch (CryptoException e) {
-            throw new RuntimeException(e);
         }
 
 
@@ -97,91 +84,20 @@ public class ClientService {
         }
 
     }
-/*
-    public void checkAccount() {
-        Message messageToSend = createBaseMessage();
-        messageToSend.setOperationCode(Command.CHECK);
-
-        if (isMalicious) {
-            Message response = communication.sendMaliciousDupMessage(messageToSend);
-        }
-        Message response = communication.sendMessage(messageToSend);
-
-
-        if (response == null) {
-            return;
-        }
-
-        if (!isFresh(response)) {
-            System.out.println("Bank response is not fresh");
-            return;
-        }
-
-        try {
-            if (!isSignatureValid(response)) {
-                System.out.println("Bank signature validation failed");
-                return;
-            }
-        } catch (CryptoException e) {
-            throw new RuntimeException(e);
-        }
-
-
-        if (response.getOperationCode().equals(Command.CHECK)) {
-            Account accountToCheck = response.getAccountToCheckOrAudit();
-
-            System.out.println("Account access was successful ");
-            System.out.println("Your current balance is: " + accountToCheck.getBalance());
-
-            if(accountToCheck.getPendingTransactions().size() ==0){
-                System.out.println("You have no pending transactions ");
-                return;
-            }
-
-            System.out.println("Pending Transactions");
-            for (AccountOperation transaction : accountToCheck.getPendingTransactions()) {
-
-                System.out.println("* Transaction : " + transaction.getTransactionID()
-                        + " Amount : " + transaction.getAmount()
-                        + " Sender : " + transaction.getSender());
-
-            }
-
-        } else if (response.getOperationCode().equals(Command.ERROR)) {
-            System.out.println(response.getErrorMessage());
-
-            return;
-        }
-
-    }
-    */
 
 
     public void checkAccount(){
         Message messageToSend = createBaseMessage();
         messageToSend.setOperationCode(Command.CHECK);
         if (isMalicious) {
-            Message response = communication.sendMaliciousDupMessage(messageToSend);
+            Message response = communication.evilBroadcastToSomeServers(messageToSend);
         }
-        Message response = communication.sendMessage(messageToSend);
+        Message response = communication.broadcastToAllServers(messageToSend);
 
 
         if (response == null) {
             return;
         }
-        if (!isFresh(response)) {
-            System.out.println("Bank response is not fresh");
-            return;
-        }
-        try {
-            if (!isSignatureValid(response)) {
-                System.out.println("Bank signature validation failed");
-                return;
-            }
-        } catch (CryptoException e) {
-            throw new RuntimeException(e);
-        }
-
 
         if (response.getOperationCode().equals(Command.CHECK)) {
             Account accountToCheck = response.getAccountToCheck();
@@ -273,38 +189,24 @@ public class ClientService {
 
 
         if (isMalicious) {
-            Message response = communication.sendMaliciousDupMessage(messageToSend);
+            Message response = communication.evilBroadcastToSomeServers(messageToSend);
         }
 
-        Message response = communication.sendMessage(messageToSend);
+        Message response = communication.broadcastToAllServers(messageToSend);
 
 
         if (response == null) {
             return;
         }
 
-
-        if (!isFresh(response)) {
-            System.out.println("Bank response is not fresh");
-            return;
-        }
-
-        try {
-            if (!isSignatureValid(response)) {
-                System.out.println("Bank signature validation failed");
-                return;
-            }
-        } catch (CryptoException e) {
-            throw new RuntimeException(e);
-        }
-
-
         if (response.getOperationCode().equals(Command.SEND)) {
 
             AccountOperation op = response.getTransferDetails();
+            System.out.println("---------------------------------------------------------------");
             System.out.println("Your transaction " + op.getTransactionID() + " is pending    "
                     + " Amount sent " + op.getAmount() + "    "
                     + " " + keyPath + " now has to accept your transaction");
+            System.out.println("--------------------------------------------------------------");
 
 
         } else if (response.getOperationCode().equals(Command.ERROR)) {
@@ -325,10 +227,10 @@ public class ClientService {
 
 
         if (isMalicious) {
-            Message response = communication.sendMaliciousDupMessage(messageToSend);
+            Message response = communication.evilBroadcastToSomeServers(messageToSend);
         }
 
-        Message response = communication.sendMessage(messageToSend);
+        Message response = communication.broadcastToAllServers(messageToSend);
 
 
         if (response == null) {
@@ -336,28 +238,11 @@ public class ClientService {
         }
 
 
-        if (!isFresh(response)) {
-            System.out.println("Bank response is not fresh");
-            return;
-        }
-
-        try {
-            if (!isSignatureValid(response)) {
-                System.out.println("Bank signature validation failed");
-                return;
-            }
-        } catch (CryptoException e) {
-            System.out.println("Error while trying to verify signature");
-            throw new RuntimeException(e);
-        }
-
-
         if (response.getOperationCode().equals(Command.RECEIVE)) {
-            Account myAccount = response.getAccountToCheck();
 
+            System.out.println("----------------------------------------------------------");
             System.out.println("Transaction " + transferToReceiveID + " completed");
-
-            System.out.println("Your new balance is " + myAccount.getBalance());
+            System.out.println("----------------------------------------------------------");
 
 
         } else if (response.getOperationCode().equals(Command.ERROR)) {
@@ -384,11 +269,10 @@ public class ClientService {
             Message messageToSend = new Message(crypto.RSAKeyGen.readPub(pubKeyPath + "clientPublicKey"+ myClientNumber));
 
             addFreshness(messageToSend);
-            signMessage(messageToSend);
 
             return messageToSend;
 
-        } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException | CryptoException e) {
+        } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException e) {
             e.printStackTrace();
             return null;
         }
@@ -415,6 +299,18 @@ public class ClientService {
     }
 
 
+    private boolean verifyClientTransferDetails(AccountOperation accountOperation, PublicKey publicKey) throws CryptoException {
+
+        PublicKey serverKey = null;
+        boolean isValid= false;
+
+        isValid = Crypto.verifySignature(accountOperation.getBytesToSign(), accountOperation.getSenderSignature(), publicKey );
+
+        System.out.println("is the account operation's signature valid ? : " +  isValid);
+        return isValid;
+
+    }
+
     /**
      * Responsible for adding a nonce and a timestamp to a message
      * @param messageToSend message we want to add freshness to
@@ -424,23 +320,6 @@ public class ClientService {
         messageToSend.setNonce("client" + random.nextInt());
     }
 
-
-
-    /**
-     * This function uses the client's private key to sign a message. It calls the function sign in the crypto module.
-     * @param messageToSend message to be signed
-     * @return signed message
-     */
-    private Message signMessage(Message messageToSend) throws CryptoException {
-        String signature = null;
-        try {
-            signature = Crypto.sign(messageToSend.getBytesToSign(), crypto.RSAKeyGen.readPriv(myPrivKeyPath + "clientPrivateKey"+myClientNumber));
-        } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException e) {
-            e.printStackTrace();
-        }
-        messageToSend.setSignature(signature);
-        return messageToSend;
-    }
 
 
     private AccountOperation signAccountOperation(AccountOperation accountOperation) throws CryptoException {
@@ -454,41 +333,5 @@ public class ClientService {
         return accountOperation;
     }
 
-
-    /**
-     * Checks if a message is fresh and stores the nonce persistently.
-     * Only checks timestamps for now :D
-     */
-    public boolean isFresh(Message message) {
-        String nonce = message.getNonce();
-
-        //Check if request is fresh
-        return (currentTimeMillis() - message.getTimestamp()) <= MAX_TIMESTAMP;
-    }
-
-
-    //TODO
-    /**
-     * This method is responsible for validating whether a message signature is valid
-     * @param message signed message
-     * @return true if valid, false otherwise
-     */
-    private boolean isSignatureValid(Message message) throws CryptoException {
-
-        PublicKey serverKey = null;
-        boolean isValid= false;
-
-        try {
-            serverKey = crypto.RSAKeyGen.readPub(pubKeyPath + "serverPublicKey");
-        } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException e) {
-            e.printStackTrace();
-        }
-        isValid = Crypto.verifySignature(message.getBytesToSign(), message.getSignature(), serverKey);
-
-
-        System.out.println("is signature valid:" +  isValid);
-        return isValid;
-
-    }
 
 }

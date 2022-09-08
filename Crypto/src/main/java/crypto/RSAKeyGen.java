@@ -18,25 +18,31 @@ public class RSAKeyGen {
         public static void main(String[] args) throws Exception {
 
             // check args
-            if (args.length != 1) {
-                System.err.println("Usage: RSAKeyGenerator numberOfClients");
+            if (args.length != 2) {
+                System.err.println("Usage: RSAKeyGenerator <numberOfClients> <numberOfByzantineServers>");
                 return;
             }
 
             final int numberOfClients = Integer.parseInt(args[0]);
+            final int numberOfByzantineServers = Integer.parseInt(args[1]);
+            final int totalNumberOfServers = numberOfByzantineServers*3 + 1;
 
 
-            String privkeyPath = "../Client/src/main/java/clientPrivateKey";
-            String pubkeyPath = "../CommonTypes/src/main/java/clientPublicKey";
-
-
-            System.out.println("Generate server key pair");
-            write("../Server/src/main/java/serverPrivateKey", "../CommonTypes/src/main/java/serverPublicKey");
-
+            String clientPrivKeyPath = "../Client/src/main/java/clientPrivateKey";
+            String clientPubKeyPath = "../CommonTypes/src/main/java/clientPublicKey";
 
             for(int i =0 ; i <numberOfClients; i++){
                 System.out.println("Generate client key pair");
-                write(privkeyPath + i, pubkeyPath + i);
+                write(clientPrivKeyPath + i, clientPubKeyPath + i);
+            }
+
+
+            String serverPrivKeyPath = "../Server/src/main/java/serverPrivateKey";
+            String serverPubKeyPath = "../CommonTypes/src/main/java/serverPublicKey";
+
+            for(int i =0 ; i <totalNumberOfServers; i++){
+                System.out.println("Generate server key pair");
+                write(serverPrivKeyPath + i, serverPubKeyPath + i);
             }
 
             System.out.println("Done.");

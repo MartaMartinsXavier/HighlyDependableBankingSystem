@@ -21,7 +21,8 @@
     <properties>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
-        <numberOfClients>2</numberOfClients>
+        <numberOfClients>3</numberOfClients>
+        <numberOfFaults>1</numberOfFaults>
     </properties>
 
 
@@ -38,6 +39,7 @@
                     <mainClass>crypto.RSAKeyGen</mainClass>
                     <arguments>
                         <argument>${numberOfClients}</argument>
+                        <argument>${numberOfFaults}</argument>
                     </arguments>
                 </configuration>
             </plugin>

@@ -1,13 +1,11 @@
 package server;
 
-import commontypes.Account;
-import commontypes.AccountOperation;
-import commontypes.Message;
-import commontypes.Command;
+import commontypes.*;
 import crypto.Crypto;
 import crypto.exceptions.CryptoException;
 
 import java.io.IOException;
+import java.net.ServerSocket;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 
@@ -22,10 +20,16 @@ import static java.lang.System.currentTimeMillis;
 public class ServerService {
     private ArrayList<Account> allAccounts = new ArrayList<>();
     private ArrayList<String> allNonces = new ArrayList<>();
-    String keyPath = "src/main/java/";
+    String myPrivkeyPath;
 
     Random random = new Random();
     private static final int MAX_TIMESTAMP = 10000;
+
+
+
+    public ServerService(int myServerID){
+        myPrivkeyPath = "src/main/java/serverPrivateKey" + myServerID;
+    }
 
 
     public Message process(Message message) {
@@ -85,6 +89,8 @@ public class ServerService {
 
 
     public Message createAccount(Message message) {
+
+        System.out.println(message.getPublicKey());
 
         if(!isSignatureValid(message,message.getPublicKey())) {
             System.out.println("Signature authentication failed");
@@ -163,7 +169,7 @@ public class ServerService {
             return createErrorMessage("Not enough funds.", message.getPublicKey());
         }
         if (findAccount(dest) == null) {
-            return createErrorMessage("you cannot transfer funds from someone else", message.getPublicKey());
+            return createErrorMessage("You cannot transfer funds to an unopened account", message.getPublicKey());
         }
 
         senderAccount.setBalance(senderAccount.getBalance() - amount);
@@ -265,12 +271,6 @@ public class ServerService {
 
         addFreshness(message);
 
-        try {
-            signMessage(message);
-        } catch (CryptoException e) {
-            e.printStackTrace();
-        }
-
         return message;
     }
 
@@ -332,9 +332,6 @@ public class ServerService {
     }
 
 
-
-
-
     /**
      * This function uses the client's private key to sign a message. It calls the function sign in the crypto module.
      * @param messageToSend message to be signed
@@ -343,7 +340,7 @@ public class ServerService {
     private Message signMessage(Message messageToSend) throws CryptoException {
         String signature = null;
         try {
-            signature = Crypto.sign(messageToSend.getBytesToSign(), crypto.RSAKeyGen.readPriv(keyPath + "serverPrivateKey"));
+            signature = Crypto.sign(messageToSend.getBytesToSign(), crypto.RSAKeyGen.readPriv(myPrivkeyPath));
         } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException e) {
             e.printStackTrace();
         }
@@ -353,18 +350,28 @@ public class ServerService {
 
 
 
-
-    //TODO
     /**
      * This method is responsible for validating whether a message signature is valid
      * @param message signed message
-     * @param publicKey public key
+     * @param publicKey client public key
      * @return true if valid, false otherwise
      */
-    private boolean isSignatureValid(Message message, PublicKey  publicKey){
-        return true;
+    private boolean isSignatureValid(Message message, PublicKey publicKey) {
+
+        boolean isValid= false;
+
+        if (message.getSignature()==null){
+            System.out.println("The server could not verify this signature: clients signature was null");
+            return false;
+        }
+        try {
+            isValid = Crypto.verifySignature(message.getBytesToSign(), message.getSignature(), publicKey);
+        } catch (CryptoException e) {
+            System.out.println("The server could not verify this signature");
+        }
+
+        System.out.println("is signature valid:" +  isValid);
+        return isValid;
     }
-
-
 
 }
