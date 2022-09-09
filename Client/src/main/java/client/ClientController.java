@@ -8,9 +8,6 @@ import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 import java.util.Scanner;
 
-import commontypes.Account;
-import commontypes.AccountOperation;
-import commontypes.Message;
 import commontypes.Command;
 
 
@@ -18,12 +15,12 @@ public class ClientController {
 
 
     public static Scanner scan = new Scanner(System.in);
-    public static ClientService CLIENT_SERVICE = ClientService.getInstance();
+    public static ClientService clientService;
 
 
     public ClientController(Boolean isMalicious, String clientNumber) {
-        CLIENT_SERVICE.setIsMalicious(isMalicious);
-        CLIENT_SERVICE.setMyClientNumber(clientNumber);
+        clientService.setIsMalicious(isMalicious);
+        clientService = new ClientService(clientNumber);
     }
 
 
@@ -61,11 +58,11 @@ public class ClientController {
             switch(valueOfCommand){
 
                 case OPEN:
-                    CLIENT_SERVICE.createAccount();
+                    clientService.createAccount();
                     break;
 
                 case CHECK:
-                    CLIENT_SERVICE.checkAccount();
+                    clientService.checkAccount();
                     break;
 
                 case SEND:
@@ -76,7 +73,7 @@ public class ClientController {
                     long amount;
                     amount = Long.parseLong(scan.next());
 
-                    CLIENT_SERVICE.sendAmount(keyPath,amount);
+                    clientService.sendAmount(keyPath,amount);
                     break;
 
                 case RECEIVE:
@@ -84,7 +81,7 @@ public class ClientController {
                     long transferToReceiveID;
                     transferToReceiveID = Long.parseLong(scan.next());
 
-                    CLIENT_SERVICE.receiveAmount(transferToReceiveID);
+                    clientService.receiveAmount(transferToReceiveID);
                     break;
                 default:
                     System.out.println();

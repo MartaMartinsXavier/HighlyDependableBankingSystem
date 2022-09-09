@@ -1,15 +1,12 @@
 package client;
 
-import commontypes.AccountOperation;
-import commontypes.Message;
-import commontypes.Command;
-import commontypes.Account;
+import commontypes.*;
 
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
-import java.util.Base64;
+import java.util.ArrayList;
 import java.util.Random;
 import crypto.Crypto;
 import crypto.exceptions.*;
@@ -27,7 +24,9 @@ public class ClientService {
     static boolean isMalicious;
     static String myClientNumber;
 
-    ClientCommunication communication = new ClientCommunication();
+    ClientCommunication communication;
+
+    private Account myAccount;
 
 
     public static void setMyClientNumber(String myClientNumber) {
@@ -42,13 +41,11 @@ public class ClientService {
 
     private static ClientService clientService = null;
 
-
-    public static ClientService getInstance(){
-
-        if(clientService == null)
-            clientService = new ClientService();
-        return clientService;
+    public ClientService( String clientNumber){
+        myClientNumber = clientNumber;
+        communication = new ClientCommunication(clientNumber);
     }
+
 
 
     /* *************************************************************************************
@@ -87,6 +84,9 @@ public class ClientService {
 
 
     public void checkAccount(){
+        checkAccount(true);
+    }
+    public void checkAccount(boolean detailedPrints) {
         Message messageToSend = createBaseMessage();
         messageToSend.setOperationCode(Command.CHECK);
         if (isMalicious) {
@@ -96,15 +96,21 @@ public class ClientService {
 
 
         if (response == null) {
+            if (detailedPrints)
+                System.out.println("Null response");
             return;
         }
 
         if (response.getOperationCode().equals(Command.CHECK)) {
             Account accountToCheck = response.getAccountToCheck();
 
-            System.out.println("Account access was successful ");
+            myAccount = accountToCheck;
 
-            System.out.println("Server value for balance: " + accountToCheck.getBalance());
+            if(detailedPrints){
+                System.out.println("Account access was successful ");
+
+                System.out.println("Server value for balance: " + accountToCheck.getBalance());
+            }
 
 
             long balanceResult = accountToCheck.getInitialBalance();
@@ -112,62 +118,75 @@ public class ClientService {
             for (AccountOperation transaction : accountToCheck.getAccountOpHistory()) {
                 //if i am not the sender, then I increase my balance
                 if (!transaction.getSender().equals(getMyPublicKey())){
-                        balanceResult += transaction.getAmount();
+                    balanceResult += transaction.getAmount();
+
+                    //if i am the sender
+                }else{
+                    balanceResult -= transaction.getAmount();
                 }
 
             }
-            //if i am the sender
-            for (AccountOperation transaction : accountToCheck.getOutgoingTransactions()) {
-                balanceResult -= transaction.getAmount();
 
+            if(detailedPrints){
+                //return current balance
+                System.out.println();
+                System.out.println("--------------------------------------- ");
+                System.out.println("Account balance is : " + balanceResult);
+                System.out.println("----------------------------------------");
             }
-            //return current balance
-            System.out.println();
-            System.out.println("----------------------------------- ");
-            System.out.println("Account balance is : " + balanceResult);
-            System.out.println("-----------------------------------");
 
 
             // all past executed transactions
             if(accountToCheck.getAccountOpHistory().size() ==0){
-                System.out.println("-----------------------------------");
-                System.out.println("You have no past transactions");
-                System.out.println("-----------------------------------");
+                if(detailedPrints){
+                    System.out.println("-----------------------------------");
+                    System.out.println("You have no past transactions");
+                    System.out.println("-----------------------------------");
+                }
 
             }
             else{
-                System.out.println("-----------------------------------");
-                System.out.println("History of all Transactions");
-                System.out.println("-----------------------------------");
-                for (AccountOperation transaction : accountToCheck.getAccountOpHistory()) {
-                    System.out.println("* Transaction : " + transaction.getTransactionID() + "\t"
-                        + " Amount : " + transaction.getAmount() + "    "
-                        + " Sender : " + transaction.getPathToPubKeySender() + "    "
-                        + " Receiver: " + transaction.getPathToPubKeyDest());
+                if(detailedPrints){
+                    System.out.println("-----------------------------------");
+                    System.out.println("History of all Transactions");
+                    System.out.println("-----------------------------------");
+                    for (AccountOperation transaction : accountToCheck.getAccountOpHistory()) {
+                        System.out.println("* Transaction : " + transaction.getTransactionID() + "\t"
+                                + " Amount : " + transaction.getAmount() + "    "
+                                + " Sender : " + transaction.getPathToPubKeySender() + "    "
+                                + " Receiver: " + transaction.getPathToPubKeyDest());
+                    }
                 }
             }
 
             // all pending transactions
             if(accountToCheck.getPendingTransactions().size() ==0){
-                System.out.println("-----------------------------------");
-                System.out.println("You have no pending transactions ");
-                System.out.println("-----------------------------------");
+                if(detailedPrints){
+                    System.out.println("-----------------------------------");
+                    System.out.println("You have no pending transactions ");
+                    System.out.println("-----------------------------------");
+                }
             }
             else{
-                System.out.println("-----------------------------------");
-                System.out.println("Pending Transactions");
-                System.out.println("-----------------------------------");
-                for (AccountOperation transaction : accountToCheck.getPendingTransactions()) {
+                if(detailedPrints){
+                    System.out.println("-----------------------------------");
+                    System.out.println("Pending Transactions");
+                    System.out.println("-----------------------------------");
+                    for (AccountOperation transaction : accountToCheck.getPendingTransactions()) {
 
-                    System.out.println("* Transaction : " + transaction.getTransactionID() + "    "
-                            + " Amount : " + transaction.getAmount() + "    "
-                            + " Sender : " + transaction.getPathToPubKeySender());
+                        System.out.println("* Transaction : " + transaction.getTransactionID() + "    "
+                                + " Amount : " + transaction.getAmount() + "    "
+                                + " Sender : " + transaction.getPathToPubKeySender());
+                    }
                 }
             }
 
         } else if (response.getOperationCode().equals(Command.ERROR)) {
             System.out.println(response.getErrorMessage());
+            ClientCommunication.setWts(ClientCommunication.getWts()-1);
         }
+
+
     }
 
 
@@ -176,9 +195,12 @@ public class ClientService {
 
         PublicKey keyDest = getOthersPublicKey(keyPath);
 
+        // increase writing timestamp
+        ClientCommunication.setWts(ClientCommunication.getWts()+1);
+
         AccountOperation transfer = null;
         try {
-            transfer = new AccountOperation(amount, getMyPublicKey(), myClientNumber, keyDest, keyPath);
+            transfer = new AccountOperation(amount, getMyPublicKey(), myClientNumber, keyDest, keyPath, ClientCommunication.getWts());
             signAccountOperation(transfer);
         } catch (CryptoException e) {
             e.printStackTrace();
@@ -196,20 +218,21 @@ public class ClientService {
 
 
         if (response == null) {
+            System.out.println("Null or insufficient acks answer from server");
+            ClientCommunication.setWts(ClientCommunication.getWts()-1);
             return;
         }
 
         if (response.getOperationCode().equals(Command.SEND)) {
-
-            AccountOperation op = response.getTransferDetails();
             System.out.println("---------------------------------------------------------------");
-            System.out.println("Your transaction " + op.getTransactionID() + " is pending    "
-                    + " Amount sent " + op.getAmount() + "    "
+            System.out.println("Your transaction " + transfer.getTransactionID() + " is pending    "
+                    + " Amount sent " + transfer.getAmount() + "    "
                     + " " + keyPath + " now has to accept your transaction");
             System.out.println("--------------------------------------------------------------");
 
 
         } else if (response.getOperationCode().equals(Command.ERROR)) {
+            ClientCommunication.setWts(ClientCommunication.getWts()-1);
             System.out.println(response.getErrorMessage());
 
         }
@@ -217,9 +240,28 @@ public class ClientService {
     }
 
     public void receiveAmount(long transferToReceiveID){
+        checkAccount(false);
+
         Message messageToSend = createBaseMessage();
 
-        AccountOperation transfer= new AccountOperation(transferToReceiveID);
+        if(myAccount == null){
+            System.out.println("Error receiving transaction, check details.");
+            return;
+        }
+        AccountOperation transfer= findAccountOperation(transferToReceiveID, myAccount.getPendingTransactions());
+
+        if(transfer == null){
+            System.out.println("Error finding provided operations");
+            return;
+        }
+
+        ClientCommunication.setWts(ClientCommunication.getWts()+1);
+
+        try {
+            signReceivedAccountOperation(transfer, ClientCommunication.getWts());
+        } catch (CryptoException e) {
+            System.out.println("Failed to sign the confirmation for the received operation.");
+        }
 
         messageToSend.setTransferDetails(transfer);
 
@@ -234,6 +276,8 @@ public class ClientService {
 
 
         if (response == null) {
+            System.out.println("Null or insufficient acks answer from server");
+            ClientCommunication.setWts(ClientCommunication.getWts()-1);
             return;
         }
 
@@ -248,6 +292,7 @@ public class ClientService {
         } else if (response.getOperationCode().equals(Command.ERROR)) {
             System.out.println(response.getErrorMessage());
 
+            ClientCommunication.setWts(ClientCommunication.getWts()-1);
         }
 
     }
@@ -269,6 +314,10 @@ public class ClientService {
             Message messageToSend = new Message(crypto.RSAKeyGen.readPub(pubKeyPath + "clientPublicKey"+ myClientNumber));
 
             addFreshness(messageToSend);
+
+            messageToSend.setMessageSender("clientPublicKey" + myClientNumber);
+            ClientCommunication.setRid(ClientCommunication.getRid()+1);
+            messageToSend.setRid(ClientCommunication.getRid());
 
             return messageToSend;
 
@@ -322,7 +371,7 @@ public class ClientService {
 
 
 
-    private AccountOperation signAccountOperation(AccountOperation accountOperation) throws CryptoException {
+    private void  signAccountOperation(AccountOperation accountOperation) throws CryptoException {
         String signature = null;
         try {
             signature = Crypto.sign(accountOperation.getBytesToSign(), crypto.RSAKeyGen.readPriv(myPrivKeyPath + "clientPrivateKey"+myClientNumber));
@@ -330,8 +379,26 @@ public class ClientService {
             e.printStackTrace();
         }
         accountOperation.setSenderSignature(signature);
-        return accountOperation;
+
     }
 
+    private void signReceivedAccountOperation(AccountOperation accountOperation, int wts) throws CryptoException {
+        String signature = null;
+        try {
+            signature = Crypto.sign(accountOperation.getBytesToReceiverSign(wts), crypto.RSAKeyGen.readPriv(myPrivKeyPath + "clientPrivateKey"+myClientNumber));
+        } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException e) {
+            e.printStackTrace();
+        }
+        accountOperation.setVerification(new Verification(wts, signature));
+    }
+
+
+    private AccountOperation findAccountOperation(long transID, ArrayList<AccountOperation> pendingTransactions){
+
+        for(AccountOperation accountOp : pendingTransactions)
+            if(accountOp.getTransactionID() == transID )
+                return accountOp;
+        return null;
+    }
 
 }

@@ -1,4 +1,4 @@
-package client;
+package server;
 
 
 import commontypes.CommonTypes;
@@ -6,17 +6,17 @@ import commontypes.Message;
 
 import java.util.ArrayList;
 
-public class MyClientRunnable implements Runnable {
+public class MyServerRunnable implements Runnable {
     int id;
     ArrayList<Message> quorumResponses;
-    ClientCommunication clientCommunication;
+    ServerCommunication serverCommunication;
     Message messageToSend;
 
 
-    public MyClientRunnable(int i, ArrayList<Message> quorumResponses, ClientCommunication clientCommunication, Message messageToSend){
+    public MyServerRunnable(int i, ArrayList<Message> quorumResponses, ServerCommunication serverCommunication, Message messageToSend){
         this.id = i;
         this.quorumResponses = quorumResponses;
-        this.clientCommunication = clientCommunication;
+        this.serverCommunication = serverCommunication;
         this.messageToSend = messageToSend;
     }
 
@@ -30,9 +30,9 @@ public class MyClientRunnable implements Runnable {
             messageToSend.setMessageRecipient(messageRecipient);
             System.out.println("messageRecipient");
             System.out.println(messageToSend.getMessageRecipient());
-            response = clientCommunication.sendMessage(messageToSend, CommonTypes.getInitialPort() + id);
+            response = serverCommunication.sendMessage(messageToSend, CommonTypes.getInitialPort() + id);
 
-            if (clientCommunication.verifyResponse(response, String.valueOf(id))){
+            if (serverCommunication.verifyResponse(response, String.valueOf(id))){
                 quorumResponses.add(response);
             }else{
                 System.out.println("Invalid server response");

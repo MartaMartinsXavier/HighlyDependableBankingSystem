@@ -1,9 +1,6 @@
 package commontypes;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
+import java.io.*;
 import java.lang.reflect.Field;
 import java.security.PublicKey;
 import java.util.Objects;
@@ -14,10 +11,13 @@ public class Message implements Serializable {
     private PublicKey publicKey;
     private long timestamp;
     private String nonce;
+    private int rid;
     private String signature;
     private AccountOperation transferDetails;
     private Account accountToCheck;
     private String errorMessage;
+    private String messageRecipient;
+    private String messageSender;
 
 
     //General Constructor
@@ -30,6 +30,14 @@ public class Message implements Serializable {
         this.errorMessage = errorMessage;
         this.publicKey = publicKey;
 
+    }
+
+    public int getRid() {
+        return rid;
+    }
+
+    public void setRid(int rid) {
+        this.rid = rid;
     }
     public Command getOperationCode() {
         return operationCode;
@@ -95,6 +103,21 @@ public class Message implements Serializable {
         this.errorMessage = errorMessage;
     }
 
+    public String getMessageRecipient() {
+        return messageRecipient;
+    }
+
+    public void setMessageRecipient(String messageRecipient) {
+        this.messageRecipient = messageRecipient;
+    }
+    public String getMessageSender() {
+        return messageSender;
+    }
+
+    public void setMessageSender(String messageSender) {
+        this.messageSender = messageSender;
+    }
+
 
     public byte[] getBytesToSign(){
 
@@ -133,6 +156,9 @@ public class Message implements Serializable {
 
         return bytesToSign;
     }
+
+
+
 
 
 
@@ -189,6 +215,36 @@ public class Message implements Serializable {
 
         return true;
     }
+
+
+    public Message deepCopy(){
+        Message copyMessage= null;
+
+        try{
+            //serialize
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            ObjectOutputStream oos = new ObjectOutputStream(bos);
+            oos.writeObject(this);
+            oos.flush();
+            oos.close();
+            bos.close();
+            byte[] byteData = bos.toByteArray();
+
+
+            //Deserialize
+            ByteArrayInputStream bais = new ByteArrayInputStream(byteData);
+            copyMessage = (Message) new ObjectInputStream(bais).readObject();
+        }catch(Exception e){
+            System.out.println("Could not make a deep copy of Message: Exception");
+        }
+        if (copyMessage == null)
+            System.out.println("Could not make a deep copy of Message: copy of message is null");
+
+        return copyMessage;
+
+    }
+
+
 }
 
 

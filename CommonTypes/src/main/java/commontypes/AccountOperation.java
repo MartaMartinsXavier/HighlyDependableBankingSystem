@@ -18,7 +18,9 @@ public class AccountOperation implements Serializable {
     private PublicKey dest;
     private long amount;
     private String senderSignature;
+    private int senderWts;
 
+    private Verification verification;
 
     Random random = new Random();
 
@@ -27,16 +29,24 @@ public class AccountOperation implements Serializable {
         this.transactionID = transactionID;
     }
 
-    public AccountOperation(long amount, PublicKey sender, String pathToPKSender, PublicKey dest, String pathToPKDest) {
+    public AccountOperation(long amount, PublicKey sender, String pathToPKSender, PublicKey dest, String pathToPKDest, int wts) {
         this.transactionID = random.nextInt(Integer.MAX_VALUE);
         this.sender = sender;
         this.pathToPKSender = "clientPublicKey" + pathToPKSender;
         this.amount = amount;
         this.dest = dest;
         this.pathToPKDest = pathToPKDest;
+        this.senderWts = wts;
 
     }
 
+    public Verification getVerification() {
+        return verification;
+    }
+
+    public void setVerification(Verification verification) {
+        this.verification = verification;
+    }
 
     public long getTransactionID() {
         return transactionID;
@@ -94,6 +104,15 @@ public class AccountOperation implements Serializable {
         this.senderSignature = senderSignature;
     }
 
+    public int getSenderWts() {
+        return senderWts;
+    }
+
+    public void setSenderWts(int senderWts) {
+        this.senderWts = senderWts;
+    }
+
+
     @Override
     public boolean equals(Object obj) {
         AccountOperation other = (AccountOperation) obj;
@@ -129,9 +148,45 @@ public class AccountOperation implements Serializable {
             oos.close();
             bos.close();
 
-        } catch (IllegalAccessException e) {
+        } catch (IllegalAccessException | IOException e) {
             e.printStackTrace();
-        } catch (IOException e) {
+        }
+
+        return bytesToSign;
+    }
+
+    public byte[] getBytesToReceiverSign(int wts){
+
+        /* objects -> oos (stream)-> bos (stream for bytes) -> byte[]bytesTosign*/
+
+        ObjectOutputStream oos = null;
+        ByteArrayOutputStream bos = null;
+        byte[] bytesToSign = null; //stores the bytes of the non-null attributes
+        String str = "";
+
+        try {
+            bos = new ByteArrayOutputStream();
+            oos = new ObjectOutputStream(bos);
+
+            //Iterate to all fields of the message
+            Field[] fields = AccountOperation.class.getDeclaredFields();
+            for (Field field : fields) {
+                Object obj = field.get(this);
+
+                if (!field.getName().equals("verification") && obj != null) {
+                    //System.out.println(field.getName() + " = " + obj);
+                    oos.writeObject(obj);
+                    oos.flush();
+                }
+            }
+            oos.writeObject(wts);
+            oos.flush();
+
+            bytesToSign = bos.toByteArray();
+            oos.close();
+            bos.close();
+
+        } catch (IllegalAccessException | IOException e) {
             e.printStackTrace();
         }
 

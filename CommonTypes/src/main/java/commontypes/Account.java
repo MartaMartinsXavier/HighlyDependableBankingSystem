@@ -13,7 +13,6 @@ public class Account implements Serializable {
     private final long initialBalance = 20;
     private long balance;
     private ArrayList<AccountOperation> pendingTransactions;
-    private ArrayList<AccountOperation> outgoingTransactions;
     private ArrayList<AccountOperation> accountOpHistory;
 
 
@@ -21,7 +20,6 @@ public class Account implements Serializable {
         this.publicKey = publicKey;
         this.balance = initialBalance;
         this.accountOpHistory = new ArrayList<>();
-        this.outgoingTransactions = new ArrayList<>();
         this.pendingTransactions = new ArrayList<>();
     }
 
@@ -67,14 +65,6 @@ public class Account implements Serializable {
         this.accountOpHistory = accountOpHistory;
     }
 
-    public ArrayList<AccountOperation> getOutgoingTransactions() {
-        return outgoingTransactions;
-    }
-
-    public void addOutgoingTransactions(AccountOperation outgoingTransactions) {
-        this.outgoingTransactions.add(outgoingTransactions);
-    }
-    
     public void addPendingTransaction(AccountOperation accountOperation){
         this.pendingTransactions.add(accountOperation);
 

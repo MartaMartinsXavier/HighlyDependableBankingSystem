@@ -5,11 +5,9 @@ import crypto.Crypto;
 import crypto.exceptions.CryptoException;
 
 import java.io.IOException;
-import java.net.ServerSocket;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 
-import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Random;
@@ -18,9 +16,10 @@ import static java.lang.System.currentTimeMillis;
 
 
 public class ServerService {
-    private ArrayList<Account> allAccounts = new ArrayList<>();
-    private ArrayList<String> allNonces = new ArrayList<>();
+    private ArrayList<Account> allAccounts;
+    private ArrayList<String> allNonces;
     String myPrivkeyPath;
+    private int myServerID;
 
     Random random = new Random();
     private static final int MAX_TIMESTAMP = 10000;
@@ -29,6 +28,17 @@ public class ServerService {
 
     public ServerService(int myServerID){
         myPrivkeyPath = "src/main/java/serverPrivateKey" + myServerID;
+        this.myServerID = myServerID;
+
+
+        allAccounts = AtomicLogger.loadAccountsServer(String.valueOf(myServerID));
+        allNonces = AtomicLogger.loadNoncesServer(String.valueOf(myServerID));
+
+        if(allNonces == null)
+            allNonces = new ArrayList<>();
+
+        if(allAccounts == null)
+            allAccounts = new ArrayList<>();
     }
 
 
@@ -44,6 +54,7 @@ public class ServerService {
 
 
         allNonces.add(message.getNonce());
+        AtomicLogger.storeNoncesServer(allNonces, String.valueOf(myServerID));
         Command opCode = message.getOperationCode();
         switch(opCode){
 
@@ -62,6 +73,19 @@ public class ServerService {
             case RECEIVE:
                 reply = receiveAmount(message);
                 break;
+
+            case REBROADCAST:
+                reply = rebroadcastHandler(message);
+                break;
+
+            case ECHO:
+                reply = echoHandler(message);
+                break;
+
+            case REPLY:
+                reply = replyHandler(message);
+                break;
+
             default:
                 System.out.println();
                 System.out.println("Unknown command");
@@ -73,6 +97,11 @@ public class ServerService {
         if (reply ==null)
             return null;
         try {
+            //add message recipient
+            reply.setMessageSender("serverPublicKey" + String.valueOf(myServerID));
+            reply.setMessageRecipient(message.getMessageSender());
+            reply.setRid(message.getRid());
+
             return signMessage(reply);
         } catch (CryptoException e) {
             System.out.println("failed to sign message ");
@@ -104,6 +133,7 @@ public class ServerService {
 
         Account account = new Account(message.getPublicKey());
         allAccounts.add(account);
+        AtomicLogger.storeAccountsServer(allAccounts, String.valueOf(myServerID));
 
         Message messageToReply = createBaseMessage(message.getPublicKey(),Command.OPEN );
 
@@ -174,12 +204,14 @@ public class ServerService {
 
         senderAccount.setBalance(senderAccount.getBalance() - amount);
 
-        senderAccount.addOutgoingTransactions(accountOperation);
+        senderAccount.addAccountOpHistory(accountOperation);
 
         //adding transaction to the destination's pending transactions
         findAccount(dest).addPendingTransaction(accountOperation);
 
 
+        //we changed two accounts, so we store them
+        AtomicLogger.storeAccountsServer(allAccounts, String.valueOf(myServerID));
 
         Message messageToReply = createBaseMessage(message.getPublicKey(),Command.SEND);
         messageToReply.setTransferDetails(accountOperation);
@@ -201,28 +233,60 @@ public class ServerService {
 
 
         long transIDToReceive = message.getTransferDetails().getTransactionID();
-
-
         ArrayList<AccountOperation> pendingTrans = accountToCheck.getPendingTransactions();
 
-        AccountOperation accountOpToReceive = findAccountOperation(transIDToReceive, pendingTrans);
-        if (accountOpToReceive == null){
+        AccountOperation accountOpToReceive = message.getTransferDetails();
+
+        if (findAccountOperation(transIDToReceive, pendingTrans) == null){
             return createErrorMessage("Transaction not pending.", message.getPublicKey());
         }
 
         pendingTrans.remove(accountOpToReceive);
         accountToCheck.setBalance(accountToCheck.getBalance() + accountOpToReceive.getAmount());
         accountToCheck.addAccountOpHistory(accountOpToReceive);
-        findAccount(accountOpToReceive.getSender()).addAccountOpHistory(accountOpToReceive);
+
+        //we changed two accounts, so we store them
+        AtomicLogger.storeAccountsServer(allAccounts, String.valueOf(myServerID));
 
 
         Message messageToReply = createBaseMessage(message.getPublicKey(),Command.RECEIVE);
+
         messageToReply.setAccountToCheck(accountToCheck);
 
         return messageToReply;
 
 
     }
+
+    /* **************************************************************************************
+     *                       METHODS FOR BYZANTINE RELIABLE BROADCAST
+     * ************************************************************************************/
+
+
+    public Message rebroadcastHandler(Message message){
+
+        //confirm this was sent by a server!!
+        if (!sentByServer(message)){
+            System.out.println("A unknown process tried to rebroadcast");
+        }
+
+        if(!isSignatureValid(message,message.getPublicKey()))
+            return createErrorMessage("Signature authentication failed.", message.getPublicKey());
+
+
+        Account accountToCheck = findAccount(message.getPublicKey());
+        if(accountToCheck == null)
+            return createErrorMessage("Account does not exist.", message.getPublicKey());
+
+        Message messageToReply = createBaseMessage(message.getPublicKey(),Command.CHECK);
+
+        messageToReply.setAccountToCheck(accountToCheck);
+
+        return messageToReply;
+
+
+    }
+
 
 
     /* **************************************************************************************
@@ -265,7 +329,7 @@ public class ServerService {
      * @return Signed, fresh message with operation set to ERROR,
      *         and the given error message
      */
-    private Message createErrorMessage(String errorMessage, PublicKey publicKey) {
+    public Message createErrorMessage(String errorMessage, PublicKey publicKey) {
         Message message = new Message(errorMessage, publicKey);
         message.setOperationCode(Command.ERROR);
 
@@ -323,7 +387,7 @@ public class ServerService {
      * Checks if a message is fresh (timestamp lower than accepted timestamp
      * and nonce is new
      */
-    public boolean isFresh(Message message) {
+    public static boolean isFresh(Message message) {
         String nonce = message.getNonce();
 
         //Check if request is fresh
@@ -337,7 +401,7 @@ public class ServerService {
      * @param messageToSend message to be signed
      * @return signed message
      */
-    private Message signMessage(Message messageToSend) throws CryptoException {
+    public static Message signMessage(Message messageToSend) throws CryptoException {
         String signature = null;
         try {
             signature = Crypto.sign(messageToSend.getBytesToSign(), crypto.RSAKeyGen.readPriv(myPrivkeyPath));
@@ -356,7 +420,7 @@ public class ServerService {
      * @param publicKey client public key
      * @return true if valid, false otherwise
      */
-    private boolean isSignatureValid(Message message, PublicKey publicKey) {
+    public static boolean isSignatureValid(Message message, PublicKey publicKey) {
 
         boolean isValid= false;
 
@@ -373,5 +437,25 @@ public class ServerService {
         System.out.println("is signature valid:" +  isValid);
         return isValid;
     }
+
+
+    public static boolean sentByServer(Message message){
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
 
 }

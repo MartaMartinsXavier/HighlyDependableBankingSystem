@@ -80,7 +80,7 @@ public class RSAKeyGen {
         }
 
         public static PublicKey readPub(String keyPath) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
-            System.out.println("Reading key from file " + keyPath + " ...");
+            //System.out.println("Reading key from file " + keyPath + " ...");
             byte[] encoded;
             try (FileInputStream fis = new FileInputStream(keyPath)) {
                 encoded = new byte[fis.available()];
@@ -94,7 +94,7 @@ public class RSAKeyGen {
 
 
         public static PrivateKey readPriv(String keyPath) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
-            System.out.println("Reading key from file " + keyPath + " ...");
+            //System.out.println("Reading key from file " + keyPath + " ...");
             byte[] encoded;
             try (FileInputStream fis = new FileInputStream(keyPath)) {
                 encoded = new byte[fis.available()];
