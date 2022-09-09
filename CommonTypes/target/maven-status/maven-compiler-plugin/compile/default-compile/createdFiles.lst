@@ -1,8 +1,0 @@
-commontypes/Verification.class
-commontypes/Account.class
-commontypes/CommonTypes.class
-commontypes/AtomicLogger.class
-commontypes/exceptions/AccountDoesNotExistException.class
-commontypes/Command.class
-commontypes/Message.class
-commontypes/AccountOperation.class
