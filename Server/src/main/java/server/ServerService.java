@@ -23,13 +23,13 @@ public class ServerService {
 
     private static Random random = new Random();
     private static final int MAX_TIMESTAMP = 10000;
+    private ServerCommunication serverCommunication;
 
 
-
-    public ServerService(int myServerID){
+    public ServerService(int myServerID, ServerCommunication serverCommunication){
         myPrivkeyPath = "src/main/java/serverPrivateKey" + myServerID;
         this.myServerID = myServerID;
-
+        this.serverCommunication = serverCommunication;
 
         allAccounts = AtomicLogger.loadAccountsServer(String.valueOf(myServerID));
         allNonces = AtomicLogger.loadNoncesServer(String.valueOf(myServerID));
@@ -45,8 +45,8 @@ public class ServerService {
     public Message process(Message message) {
 
         Message reply = null;
-        System.out.println("message that arrived from the client :");
-        System.out.println(message);
+        System.out.println(">> MESSAGE op " + message.getOperationCode() + " nonce " + message.getNonce() +
+                " by " + message.getMessageSender());
 
 
         if(!isFresh(message))
@@ -264,40 +264,85 @@ public class ServerService {
 
 
     public void rebroadcastHandler(Message message){
+        Message receivedMessage = message.getPiggyBackMessage();
+        Message echoMessage = null;
 
-        System.out.println("received rebroadcast from " + message.getMessageSender());
-        //confirm this was sent by a server!!
-        if (!sentByServer(message)){
-            System.out.println(" NOT VERIFIED YET A unknown process tried to rebroadcast");
+        if(!AuthenticatedDoubleEchoBroadcast.wasMessageEchoed(receivedMessage)){
+
+            //sent echo = true
+            AuthenticatedDoubleEchoBroadcast.markMessageEchoed(receivedMessage);
+
+            echoMessage = ServerCommunication.createMessageWithPiggyback(
+                    getMyPublicKey(), Command.ECHO, receivedMessage, String.valueOf(myServerID));
+
+            serverCommunication.broadcastToAllServers(echoMessage);
+
+            //send ECHO to myself
+            AuthenticatedDoubleEchoBroadcast.addEcho(receivedMessage);
         }
-
-        if(!isSignatureValid(message,message.getPublicKey()))
-            System.out.println("Signature authentication failed.");
-
 
     }
 
     public void echoHandler(Message message){
+        Message receivedMessage = message.getPiggyBackMessage();
+        Message readyMessage = null;
 
-        //confirm this was sent by a server!!
-        if (!sentByServer(message)){
-            System.out.println("A unknown process tried to send an echo message");
+
+
+
+
+
+
+
+        int echoCount = AuthenticatedDoubleEchoBroadcast.addEcho(receivedMessage);
+
+        // if not echoed, and quorum is met, then broadcast echo
+        if (    echoCount >= CommonTypes.getByzantineQuorum() &&
+                !AuthenticatedDoubleEchoBroadcast.wasMessagedReady(receivedMessage)){
+
+            AuthenticatedDoubleEchoBroadcast.markMessageReady(receivedMessage);
+
+            readyMessage = ServerCommunication.createMessageWithPiggyback(
+                    getMyPublicKey(), Command.READY, receivedMessage, String.valueOf(myServerID));
+
+            serverCommunication.broadcastToAllServers(readyMessage);
+
+            //Send ready to myself
+            AuthenticatedDoubleEchoBroadcast.addReady(receivedMessage);
         }
-        Message messageToReply = createBaseMessage(message.getPublicKey(),Command.CHECK);
-
-        //which server sent this?
-        //if i havent received an echo for this ID? from this server -> add to an ack list
-
     }
 
     public void readyHandler(Message message){
+        Message receivedMessage = message.getPiggyBackMessage();
+        Message readyMessage = null;
 
-        //confirm this was sent by a server!!
-        if (!sentByServer(message)){
-            System.out.println("A unknown process tried to send a ready message");
+
+
+
+        // Amplification step, for replicas to catch up
+        int readyCount = AuthenticatedDoubleEchoBroadcast.addReady(receivedMessage);
+        if (    readyCount >= CommonTypes.getNumberOfFaults() &&
+                !AuthenticatedDoubleEchoBroadcast.wasMessagedReady(receivedMessage)){ // not echoed yet
+
+            AuthenticatedDoubleEchoBroadcast.markMessageReady(receivedMessage);
+            readyMessage = ServerCommunication.createMessageWithPiggyback(
+                    getMyPublicKey(), Command.READY, receivedMessage, String.valueOf(myServerID));
+
+            serverCommunication.broadcastToAllServers(readyMessage);
+
+            //Send ready to myself
+            AuthenticatedDoubleEchoBroadcast.addReady(receivedMessage);
         }
-        Message messageToReply = createBaseMessage(message.getPublicKey(),Command.CHECK);
 
+        // if enough Readys received and not delivered, then deliver
+        // if message was broadcast, let original thread process and reply the client
+        if( AuthenticatedDoubleEchoBroadcast.countReady(receivedMessage) > 2* CommonTypes.getNumberOfFaults() &&
+            !AuthenticatedDoubleEchoBroadcast.wasMessageDelivered(receivedMessage) &&
+            !AuthenticatedDoubleEchoBroadcast.wasMessageBroadcasted(receivedMessage)){
+
+            AuthenticatedDoubleEchoBroadcast.markMessageReady(receivedMessage);
+            process(receivedMessage);
+        }
 
     }
 
@@ -456,8 +501,27 @@ public class ServerService {
         return false;
     }
 
+    public boolean validPiggyMessage (Message piggyMessage){
+        //Originated from client, sender = getClientKey,
+
+        //Signed by client
+
+        //valid operation
+        return false;
+    }
+
+    public boolean validWrapperMessage(){
+
+        return false;
+    }
 
 
+    public PublicKey getMyPublicKey(){
+        return ServerCommunication.getMyServerPublicKey();
+    }
 
+    public PublicKey getServerPublicKey(String id){
+        return ServerCommunication.getServerPublicKey(id);
+    }
 
 }
