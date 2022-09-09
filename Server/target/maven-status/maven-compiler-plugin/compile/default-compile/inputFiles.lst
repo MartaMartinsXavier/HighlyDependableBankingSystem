@@ -1,5 +1,5 @@
-/home/marta/Desktop/SECProj/Server/src/main/java/server/MyServerRunnable.java
-/home/marta/Desktop/SECProj/Server/src/main/java/server/ServerService.java
-/home/marta/Desktop/SECProj/Server/src/main/java/server/ServerCommunication.java
-/home/marta/Desktop/SECProj/Server/src/main/java/server/AuthenticatedDoubleEchoBroadcast.java
-/home/marta/Desktop/SECProj/Server/src/main/java/server/ServerApp.java
+/Users/cherrythecarry/SECProj/Server/src/main/java/server/ServerApp.java
+/Users/cherrythecarry/SECProj/Server/src/main/java/server/AuthenticatedDoubleEchoBroadcast.java
+/Users/cherrythecarry/SECProj/Server/src/main/java/server/ServerCommunication.java
+/Users/cherrythecarry/SECProj/Server/src/main/java/server/ServerService.java
+/Users/cherrythecarry/SECProj/Server/src/main/java/server/MyServerRunnable.java

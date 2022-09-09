@@ -32,7 +32,7 @@ public class AccountOperation implements Serializable {
     public AccountOperation(long amount, PublicKey sender, String pathToPKSender, PublicKey dest, String pathToPKDest, int wts) {
         this.transactionID = random.nextInt(Integer.MAX_VALUE);
         this.sender = sender;
-        this.pathToPKSender = "clientPublicKey" + pathToPKSender;
+        this.pathToPKSender = pathToPKSender;
         this.amount = amount;
         this.dest = dest;
         this.pathToPKDest = pathToPKDest;

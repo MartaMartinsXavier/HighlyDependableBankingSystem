@@ -45,12 +45,18 @@ public class ClientApp {
     public static void startClientController(boolean isMalicious, String myClientNumber) {
         ClientController clientController = new ClientController(isMalicious, myClientNumber);
 
-        while (true) {
-            ClientController.listCommands();
-            ClientController.parseCommand();
+
+        if (isMalicious){
+            while (true) {
+                ClientController.listMaliciousCommands();
+                ClientController.parseEvilCommand();
+            }
+        }else{
+            while (true) {
+                ClientController.listCommands();
+                ClientController.parseCommand();
+            }
         }
 
     }
-
-
 }

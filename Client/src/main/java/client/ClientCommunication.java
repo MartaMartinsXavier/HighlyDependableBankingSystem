@@ -135,12 +135,30 @@ public class ClientCommunication {
         return response;
     }
 
-    public Message broadcastToAllServers(Message message) {
+
+    public Message broadcastToAllServers(Message message){
+        return broadcastToAllServers(message, false);
+    }
+
+    public Message broadcastToAllServers(Message message, boolean evilFlag) {
 
         ArrayList<Message> quorumResponses = new ArrayList<>();
         int byzantineQuorum = CommonTypes.getByzantineQuorum();
 
-        for (int i=0 ; i< CommonTypes.getTotalNumberOfServers() ; i++) {
+
+        if (evilFlag){
+            for (int i=0 ; i< Math.floor((double)CommonTypes.getTotalNumberOfServers()/2) ; i++) {
+
+                try{
+                    //this -> passes the current instance of ClientCommunication as an argument
+                    executor.execute(new MyClientRunnable(i, quorumResponses, this, message.deepCopy()));
+                }catch(Exception e){
+                    e.printStackTrace();
+                }
+
+            }
+        }else{
+            for (int i=0 ; i< CommonTypes.getTotalNumberOfServers() ; i++) {
 
             try{
                 //this -> passes the current instance of ClientCommunication as an argument
@@ -149,6 +167,7 @@ public class ClientCommunication {
                 e.printStackTrace();
             }
 
+        }
         }
 
         while (quorumResponses.size() < byzantineQuorum){
@@ -445,36 +464,19 @@ public class ClientCommunication {
 
     //send a message to only half the servers
     public Message evilBroadcastToSomeServers(Message message) {
-        return null;
+         return broadcastToAllServers(message, true);
     }
 
 
 
 
-    public Message sendMaliciousDupMessage(Message message, int port) {
+    public Message sendMaliciousDupMessage(Message message) {
 
-        try {
-            Socket mySocket = new Socket(host, port);
+        //send once
+        broadcastToAllServers(message);
 
-            ObjectOutputStream outStream = new ObjectOutputStream(mySocket.getOutputStream());
-            ObjectInputStream inStream = new ObjectInputStream(mySocket.getInputStream());
-
-
-            //Send
-            outStream.writeObject(message);
-            //Receive
-            Message response = (Message) inStream.readObject();
-
-            //Send and Receive evil dup
-            outStream.writeObject(message);
-            Message responseEvil = (Message) inStream.readObject();
-
-            return responseEvil;
-        } catch (Exception e) {
-            e.printStackTrace();
-            System.out.println("Closing socket...");
-            return null;
-        }
+        //send second time
+        return broadcastToAllServers(message);
 
     }
 

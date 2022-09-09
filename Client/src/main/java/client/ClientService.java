@@ -53,14 +53,16 @@ public class ClientService {
      * *************************************************************************************/
 
 
-    public void createAccount() {
+    public void createAccount(){
+        createAccount(false);
+    }
+    public void createAccount(boolean evilFlag) {
         Message messageToSend = createBaseMessage();
         messageToSend.setOperationCode(Command.OPEN);
 
 
-
-        if (isMalicious){
-            System.out.println("sending malicious message");
+        if (isMalicious && evilFlag){
+            System.out.println("sending malicious open account message to only half the servers");
             Message response = communication.evilBroadcastToSomeServers(messageToSend);
         }
 
@@ -84,13 +86,14 @@ public class ClientService {
 
 
     public void checkAccount(){
-        checkAccount(true);
+        checkAccount(true, false);
     }
-    public void checkAccount(boolean detailedPrints) {
+    public void checkAccount(boolean detailedPrints, boolean evilFlag) {
         Message messageToSend = createBaseMessage();
         messageToSend.setOperationCode(Command.CHECK);
-        if (isMalicious) {
-            Message response = communication.evilBroadcastToSomeServers(messageToSend);
+        if (isMalicious&& evilFlag) {
+            System.out.println("sending malicious replay account message on check operation");
+            Message response = communication.sendMaliciousDupMessage(messageToSend);
         }
         Message response = communication.broadcastToAllServers(messageToSend);
 
@@ -189,8 +192,11 @@ public class ClientService {
 
     }
 
+    public void sendAmount(String keyPath,long amount){
+        sendAmount(keyPath, amount, false);
+    }
 
-    public void sendAmount(String keyPath, long amount) {
+    public void sendAmount(String keyPath, long amount, boolean evilFlag) {
         Message messageToSend = createBaseMessage();
 
         PublicKey keyDest = getOthersPublicKey(keyPath);
@@ -199,20 +205,39 @@ public class ClientService {
         ClientCommunication.setWts(ClientCommunication.getWts()+1);
 
         AccountOperation transfer = null;
-        try {
-            transfer = new AccountOperation(amount, getMyPublicKey(), myClientNumber, keyDest, keyPath, ClientCommunication.getWts());
-            signAccountOperation(transfer);
-        } catch (CryptoException e) {
-            e.printStackTrace();
+
+        if (isMalicious && evilFlag) {
+            //keypath is the target i am trying to steal funds from
+            System.out.println("sending evil message: trying to send funds to myself");
+            PublicKey targetPublicKey=null;
+            try {
+                targetPublicKey = crypto.RSAKeyGen.readPub(pubKeyPath + keyPath);
+            } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException e) {
+                e.printStackTrace();
+            }
+
+
+            try {
+                transfer = new AccountOperation(amount, targetPublicKey, keyPath, getMyPublicKey(), "clientPublicKey" + myClientNumber, ClientCommunication.getWts());
+                signAccountOperation(transfer);
+            } catch (CryptoException e) {
+                e.printStackTrace();
+            }
+
+
+        }else{
+            try {
+                transfer = new AccountOperation(amount, getMyPublicKey(), "clientPublicKey" + myClientNumber, keyDest, keyPath, ClientCommunication.getWts());
+                signAccountOperation(transfer);
+            } catch (CryptoException e) {
+                e.printStackTrace();
+            }
         }
+
 
         messageToSend.setTransferDetails(transfer);
         messageToSend.setOperationCode(Command.SEND);
 
-
-        if (isMalicious) {
-            Message response = communication.evilBroadcastToSomeServers(messageToSend);
-        }
 
         Message response = communication.broadcastToAllServers(messageToSend);
 
@@ -240,7 +265,7 @@ public class ClientService {
     }
 
     public void receiveAmount(long transferToReceiveID){
-        checkAccount(false);
+        checkAccount(false, false);
 
         Message messageToSend = createBaseMessage();
 
@@ -400,5 +425,34 @@ public class ClientService {
                 return accountOp;
         return null;
     }
+
+
+
+    /* *************************************************************************************
+     *                             EVIL METHODS TO DISGUISE AS REGULAR ONES
+     * *************************************************************************************/
+
+
+    public void replayAttack(){
+        checkAccount(true, true);
+
+    }
+
+
+    public void evilBroadcast(){
+        createAccount( true);
+
+    }
+
+
+
+    public void evilTransfer(String targetKeyPath, long amount){
+        sendAmount(targetKeyPath, amount, true);
+
+    }
+
+
+
+
 
 }

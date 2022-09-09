@@ -11,6 +11,7 @@ import java.util.Scanner;
 import commontypes.Command;
 
 
+
 public class ClientController {
 
 
@@ -33,6 +34,19 @@ public class ClientController {
                 + "check : obtain account balance, the full transaction history and list of pending incoming transfers" + "\n"
                 + "send : send a certain amount to another account" + "\n"
                 + "receive : accept a pending incoming transfer");
+        System.out.println();
+        System.out.println("*******************************************************************************************************");
+        System.out.println();
+    }
+
+
+    static void listMaliciousCommands() {
+        System.out.println();
+        System.out.println("******************************************************************************************************");
+        System.out.print("Available malicious commands: " + "\n"
+                + "replay : sends duplicate messages" + "\n"
+                + "evilBroadcast : sends the message to half the servers" + "\n"
+                + "evilTransfer : sends transfer from target to myself");
         System.out.println();
         System.out.println("*******************************************************************************************************");
 
@@ -98,6 +112,58 @@ public class ClientController {
 
         System.out.println();
 
+    }
+
+
+    static void parseEvilCommand() {
+        String command;
+
+        System.out.println("Insert evil command:");
+
+        command = scan.next();
+
+        try{
+            EvilClientCommands valueOfCommand = EvilClientCommands.fromStringToCommand(command);
+            if(valueOfCommand==null) {
+                System.out.println("Unknown evil command");
+                return;
+            }
+            switch(valueOfCommand){
+
+                case REPLAY:
+                    clientService.replayAttack();
+                    break;
+
+                case EVILBROADCAST:
+                    clientService.evilBroadcast();
+                    break;
+
+                case EVILTRANSFER:
+                    System.out.println("Insert the path to the public key of the target we want to steal from");
+                    String keyPath = scan.next();
+
+                    System.out.println("Insert the amount you wish to steal");
+                    long amount;
+                    amount = Long.parseLong(scan.next());
+
+                    clientService.evilTransfer(keyPath,amount);
+                    break;
+
+
+                default:
+                    System.out.println();
+                    System.out.println("Unknown evil command");
+                    break;
+            }
+        } catch(IllegalArgumentException e){
+            System.out.println("Use one of the evil commands available");
+
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
+
+        System.out.println();
     }
 
 
