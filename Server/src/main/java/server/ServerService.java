@@ -10,6 +10,7 @@ import java.security.PublicKey;
 
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
+import java.util.Objects;
 import java.util.Random;
 
 import static java.lang.System.currentTimeMillis;
@@ -149,13 +150,14 @@ public class ServerService {
             return createErrorMessage("Signature authentication failed.", message.getPublicKey());
 
 
-        Account accountToCheck = findAccount(message.getPublicKey());
+        Account accountToCheck = findAccount(message.getPublicKeyToCheck());
         if(accountToCheck == null)
             return createErrorMessage("Account does not exist.", message.getPublicKey());
 
         Message messageToReply = createBaseMessage(message.getPublicKey(),Command.CHECK);
 
         messageToReply.setAccountToCheck(accountToCheck);
+        messageToReply.setPublicKeyToCheck(message.getPublicKeyToCheck());
 
         return messageToReply;
 
@@ -267,6 +269,11 @@ public class ServerService {
         Message receivedMessage = message.getPiggyBackMessage();
         Message echoMessage = null;
 
+        if(!isBroadcastedMessageValid(message) || !isPiggyBackMessageValid(receivedMessage)){
+            System.out.println("Ready msg verification failed");
+            return;
+        }
+
         if(!AuthenticatedDoubleEchoBroadcast.wasMessageEchoed(receivedMessage)){
 
             //sent echo = true
@@ -278,7 +285,7 @@ public class ServerService {
             serverCommunication.broadcastToAllServers(echoMessage);
 
             //send ECHO to myself
-            AuthenticatedDoubleEchoBroadcast.addEcho(receivedMessage);
+            AuthenticatedDoubleEchoBroadcast.addEcho(echoMessage);
         }
 
     }
@@ -287,28 +294,24 @@ public class ServerService {
         Message receivedMessage = message.getPiggyBackMessage();
         Message readyMessage = null;
 
+        if(!isBroadcastedMessageValid(message) || !isPiggyBackMessageValid(receivedMessage)){
+            System.out.println("Ready msg verification failed");
+            return;
+        }
 
-
-
-
-
-
-
-        int echoCount = AuthenticatedDoubleEchoBroadcast.addEcho(receivedMessage);
+        int echoCount = AuthenticatedDoubleEchoBroadcast.addEcho(message);
 
         // if not echoed, and quorum is met, then broadcast echo
         if (    echoCount >= CommonTypes.getByzantineQuorum() &&
                 !AuthenticatedDoubleEchoBroadcast.wasMessagedReady(receivedMessage)){
 
-            AuthenticatedDoubleEchoBroadcast.markMessageReady(receivedMessage);
-
             readyMessage = ServerCommunication.createMessageWithPiggyback(
                     getMyPublicKey(), Command.READY, receivedMessage, String.valueOf(myServerID));
-
+            AuthenticatedDoubleEchoBroadcast.markMessageReady(receivedMessage);
             serverCommunication.broadcastToAllServers(readyMessage);
 
             //Send ready to myself
-            AuthenticatedDoubleEchoBroadcast.addReady(receivedMessage);
+            AuthenticatedDoubleEchoBroadcast.addReady(readyMessage);
         }
     }
 
@@ -316,11 +319,14 @@ public class ServerService {
         Message receivedMessage = message.getPiggyBackMessage();
         Message readyMessage = null;
 
-
+        if(!isBroadcastedMessageValid(message) || !isPiggyBackMessageValid(receivedMessage)){
+            System.out.println("Ready msg verification failed");
+            return;
+        }
 
 
         // Amplification step, for replicas to catch up
-        int readyCount = AuthenticatedDoubleEchoBroadcast.addReady(receivedMessage);
+        int readyCount = AuthenticatedDoubleEchoBroadcast.addReady(message);
         if (    readyCount >= CommonTypes.getNumberOfFaults() &&
                 !AuthenticatedDoubleEchoBroadcast.wasMessagedReady(receivedMessage)){ // not echoed yet
 
@@ -331,7 +337,7 @@ public class ServerService {
             serverCommunication.broadcastToAllServers(readyMessage);
 
             //Send ready to myself
-            AuthenticatedDoubleEchoBroadcast.addReady(receivedMessage);
+            AuthenticatedDoubleEchoBroadcast.addReady(readyMessage);
         }
 
         // if enough Readys received and not delivered, then deliver
@@ -346,6 +352,34 @@ public class ServerService {
 
     }
 
+
+    public boolean isPiggyBackMessageValid(Message message){
+        if(!Objects.equals(getOtherPublicKey(message.getMessageSender()),(message.getPublicKey()))){
+            System.out.println("Server " + message.getMessageSender() + " identity failed to check");
+            return false;
+        }
+        if(!isSignatureValid(message, message.getPublicKey())){
+            System.out.println("Failed to verify signature from " + message.getMessageSender());
+            return false;
+        }
+
+        //Verify its a client
+        return message.getMessageSender().contains("client");
+
+    }
+
+    public boolean isBroadcastedMessageValid(Message message){
+        if(!Objects.equals(getOtherPublicKey(message.getMessageSender()),(message.getPublicKey()))){
+            System.out.println("Server " + message.getMessageSender() + " identity failed to check");
+            return false;
+        }
+        if(!isSignatureValid(message, message.getPublicKey())){
+            System.out.println("Failed to verify signature from " + message.getMessageSender());
+            return false;
+        }
+
+        return message.getMessageSender().contains("server");
+    }
 
     /* **************************************************************************************
      *                       METHODS SHARED BY ALL OPERATIONS
@@ -491,10 +525,10 @@ public class ServerService {
         } catch (CryptoException e) {
             System.out.println("The server could not verify this signature");
         }
-
-        System.out.println("is signature valid:" +  isValid);
         return isValid;
     }
+
+
 
 
     public static boolean sentByServer(Message message){
@@ -523,5 +557,7 @@ public class ServerService {
     public PublicKey getServerPublicKey(String id){
         return ServerCommunication.getServerPublicKey(id);
     }
-
+    public PublicKey getOtherPublicKey(String longID){
+        return ServerCommunication.getOtherPublicKey(longID);
+    }
 }

@@ -27,8 +27,6 @@ public class MyServerRunnable implements Runnable {
             Message response = null;
             String messageRecipient = "serverPublicKey" + String.valueOf(id);
             messageToSend.setMessageRecipient(messageRecipient);
-            System.out.println("messageRecipient");
-            System.out.println(messageToSend.getMessageRecipient());
             serverCommunication.sendMessageWithoutResponse(messageToSend, CommonTypes.getInitialPort() + id);
 
 

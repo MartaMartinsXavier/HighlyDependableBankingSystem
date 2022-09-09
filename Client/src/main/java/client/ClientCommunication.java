@@ -80,7 +80,6 @@ public class ClientCommunication {
         wtsAndRidAux.add(rid);
 
         AtomicLogger.storeWtsAndRidClient(wtsAndRidAux, myClientNumber);
-        System.out.println("wts: " + wts + "rid: " + rid);
     }
 
 
@@ -239,17 +238,9 @@ public class ClientCommunication {
     public Message decideCheckResponse(ArrayList<Message> quorumResponses){
 
         Message highestWtsAndPending = null;
-        int highestWts = getWts();
+        int highestWts = 0;
         int currentWts = 0;
         ArrayList<Message> responseCandidates = new ArrayList<>();
-
-        PublicKey myPubKey = null;
-        try {
-            //i go get my public key
-            myPubKey = crypto.RSAKeyGen.readPub(pubKeyPath + "clientPublicKey"+myClientNumber);
-        } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException e) {
-            e.printStackTrace();
-        }
 
         //highest wts, if its not considered as valid response
         for (Message response : quorumResponses){
@@ -258,24 +249,27 @@ public class ClientCommunication {
                 highestWtsAndPending = response;
                 highestWts = currentWts;
                 responseCandidates.add(response);
-                //System.out.println("New highest wts " + highestWts);
             }
             if(currentWts < 0)
                 System.out.println("<Failed to get Wts>");
         }
 
-
-        int highestPending = getWts();
+        int highestPending = 0;
         int currentPendingCount = 0;
         //from what is left, we choose based on the longer pending transactions list
         for (Message response : responseCandidates){
             currentPendingCount = countValidPendingOperations(response.getAccountToCheck().getPendingTransactions());
 
             if (currentPendingCount > highestPending) {
+                highestPending = currentPendingCount;
                 highestWtsAndPending = response;
             }
         }
 
+        //update our wts if we are behind
+        if( highestWtsAndPending != null && highestWtsAndPending.getPublicKeyToCheck() != null &&
+                highestWtsAndPending.getPublicKeyToCheck().equals(ClientService.getOthersPublicKey("clientPublicKey" + myClientNumber)))
+            setWts(highestWts);
 
         return highestWtsAndPending;
     }
@@ -399,8 +393,9 @@ public class ClientCommunication {
         for (AccountOperation accountOperation : myAccount.getAccountOpHistory()){
             currentWts = getWtsFromOperation(accountOperation, myAccount.getPublicKey());
             if(!validateWts(currentWts, wtsExpectedValues)){
-                System.out.println("Wts didnt meet expected values, got  " + currentWts +" expected ");
-                System.out.println("max" + maxWts + " stored" + getWts());
+                System.out.println("Wts didnt meet expected values  " + currentWts);
+                System.out.println("highest wts was " + maxWts + " client has " + getWts());
+                System.out.println("Probably initialized system with bad client timestamps relating to server. Try reseting.");
                 return -1;
             }
             if( currentWts > maxWts) {

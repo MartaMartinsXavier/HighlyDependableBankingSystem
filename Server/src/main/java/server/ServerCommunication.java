@@ -60,7 +60,7 @@ public class ServerCommunication {
                 if (!Objects.equals(receivedMessage.getMessageRecipient(), "serverPublicKey" + serverId)){
                     reply = service.createErrorMessage("I was not the intended recipient of this message", receivedMessage.getPublicKey());
                 }
-                System.out.println("message recipient: " +receivedMessage.getMessageRecipient() );
+                //System.out.println("message recipient: " +receivedMessage.getMessageRecipient() );
 
             }else {
                 if (receivedMessage.getOperationCode().equals(Command.REBROADCAST) ||
@@ -81,10 +81,12 @@ public class ServerCommunication {
                     //Send Echo
                     if (!AuthenticatedDoubleEchoBroadcast.wasMessageEchoed(receivedMessage)) {
                         AuthenticatedDoubleEchoBroadcast.markMessageEchoed(receivedMessage);
-                        broadcastToAllServers(createMessageWithPiggyback(getMyServerPublicKey(), Command.ECHO, receivedMessage.deepCopy(), serverId));
+
+                        Message messagetoBroadcast = createMessageWithPiggyback(getMyServerPublicKey(), Command.ECHO, receivedMessage.deepCopy(), serverId);
+                        broadcastToAllServers(messagetoBroadcast);
 
                         //send ECHO to myself
-                        AuthenticatedDoubleEchoBroadcast.addEcho(receivedMessage);
+                        AuthenticatedDoubleEchoBroadcast.addEcho(messagetoBroadcast);
                     }
 
 
@@ -104,10 +106,11 @@ public class ServerCommunication {
                     if (!AuthenticatedDoubleEchoBroadcast.wasMessagedReady(receivedMessage)) {
 
                         AuthenticatedDoubleEchoBroadcast.markMessageReady(receivedMessage);
-                        broadcastToAllServers(createMessageWithPiggyback(getMyServerPublicKey(), Command.READY, receivedMessage, serverId));
+                        Message messageToBroadcast = createMessageWithPiggyback(getMyServerPublicKey(), Command.READY, receivedMessage, serverId);
+                        broadcastToAllServers(messageToBroadcast);
 
                         //Send ready to myself
-                        AuthenticatedDoubleEchoBroadcast.addReady(receivedMessage);
+                        AuthenticatedDoubleEchoBroadcast.addReady(messageToBroadcast);
                     }
 
 
@@ -127,6 +130,7 @@ public class ServerCommunication {
                     if (!AuthenticatedDoubleEchoBroadcast.wasMessageDelivered(receivedMessage)) {
                         AuthenticatedDoubleEchoBroadcast.markMessageDelivered(receivedMessage);
                         reply = service.process(receivedMessage);
+                        System.out.println("Delivering message:");
                         System.out.println(reply);
                     }
                 }
@@ -241,6 +245,18 @@ public class ServerCommunication {
         return ServerService.isFresh(response) && ServerService.isSignatureValid(response, publicKey);
     }
 
+
+    public static PublicKey getOtherPublicKey(String longID){
+        try {
+            return crypto.RSAKeyGen.readPub(pubKeyPath+longID);
+        } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException e) {
+            System.out.println(longID + " Failed to load key for " + longID);
+        }
+        return null;
+    }
+
+
+
     public static PublicKey getServerPublicKey(String id){
         try {
             return crypto.RSAKeyGen.readPub(pubKeyPath+"serverPublicKey" + id);
@@ -265,6 +281,7 @@ public class ServerCommunication {
 
         messageToSend.setPiggyBackMessage(piggyback.deepCopy());
         messageToSend.setMessageSender("serverPublicKey" + myServerID);
+        messageToSend.setPublicKey(getMyServerPublicKey());
 
         return messageToSend;
     }

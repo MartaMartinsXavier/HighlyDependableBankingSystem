@@ -61,29 +61,54 @@ public class AuthenticatedDoubleEchoBroadcast implements Serializable {
 
     public static int addEcho(Message message){
 
-        if(echoMessagesReceived.containsKey(message.getNonce())){
-            echoMessagesReceived.get(message.getNonce()).add(message);
+        if(message.getPiggyBackMessage() == null){
+            System.out.println("Message to add must have piggyBack message");
+            return 0;
+        }
+
+        // check if this server already provided an echo
+        if(echoMessagesReceived.containsKey(message.getPiggyBackMessage().getNonce())){
+            for(Message msg  : echoMessagesReceived.get(message.getPiggyBackMessage().getNonce())){
+                if(msg.getMessageSender().equals(message.getMessageSender())){
+                    System.out.println("Discarded echo repeated from server " + message.getMessageSender());
+                    return echoMessagesReceived.get(message.getPiggyBackMessage().getNonce()).size();
+                }
+            }
+            echoMessagesReceived.get(message.getPiggyBackMessage().getNonce()).add(message);
         }else{
             ArrayList<Message> messages = new ArrayList<>();
             messages.add(message);
-            echoMessagesReceived.put(message.getNonce(), messages);
+            echoMessagesReceived.put(message.getPiggyBackMessage().getNonce(), messages);
         }
 
-        System.out.println("... added Echo to "+ message.getNonce() + ", new size " + echoMessagesReceived.get(message.getNonce()).size() );
-        return echoMessagesReceived.get(message.getNonce()).size();
+        System.out.println("... added Echo to "+ message.getPiggyBackMessage().getNonce() + ", new size " +
+                echoMessagesReceived.get(message.getPiggyBackMessage().getNonce() ).size());
+        return echoMessagesReceived.get(message.getPiggyBackMessage().getNonce()).size();
     }
 
 
     public static synchronized int addReady(Message message){
-        if(readyMessagesReceived.containsKey(message.getNonce())){
-            readyMessagesReceived.get(message.getNonce()).add(message);
+        if(message.getPiggyBackMessage() == null){
+            System.out.println("Message to add must have piggyBack message)");
+            return 0;
+        }
+
+        if(readyMessagesReceived.containsKey(message.getPiggyBackMessage().getNonce())){
+            for(Message msg  : readyMessagesReceived.get(message.getPiggyBackMessage().getNonce())){
+                if(msg.getMessageSender().equals(message.getMessageSender())){
+                    System.out.println("Discarded ready repeated from server " + message.getMessageSender());
+                    return readyMessagesReceived.get(message.getPiggyBackMessage().getNonce()).size();
+                }
+            }
+            readyMessagesReceived.get(message.getPiggyBackMessage().getNonce()).add(message);
         }else{
             ArrayList<Message> messages = new ArrayList<>();
             messages.add(message);
-            readyMessagesReceived.put(message.getNonce(), messages);
+            readyMessagesReceived.put(message.getPiggyBackMessage().getNonce(), messages);
         }
 
-        System.out.println("... added Ready to "+ message.getNonce() + ", new size " + readyMessagesReceived.get(message.getNonce()).size() );
-        return readyMessagesReceived.get(message.getNonce()).size();
+        System.out.println("... added Ready to "+ message.getPiggyBackMessage().getNonce() + ", new size " +
+                readyMessagesReceived.get(message.getPiggyBackMessage().getNonce() ).size());
+        return readyMessagesReceived.get(message.getPiggyBackMessage().getNonce()).size();
     }
 }

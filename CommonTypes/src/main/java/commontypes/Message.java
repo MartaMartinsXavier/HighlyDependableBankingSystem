@@ -9,6 +9,7 @@ public class Message implements Serializable {
 
     private Command operationCode;
     private PublicKey publicKey;
+    private PublicKey publicKeyToCheck;
     private long timestamp;
     private String nonce;
     private int rid;
@@ -123,6 +124,14 @@ public class Message implements Serializable {
         return piggyBackMessage;
     }
 
+    public PublicKey getPublicKeyToCheck() {
+        return publicKeyToCheck;
+    }
+
+    public void setPublicKeyToCheck(PublicKey publicKeyToCheck) {
+        this.publicKeyToCheck = publicKeyToCheck;
+    }
+
     public void setPiggyBackMessage(Message piggyBackMessage) {
         this.piggyBackMessage = piggyBackMessage;
     }
@@ -174,8 +183,8 @@ public class Message implements Serializable {
         StringBuilder result = new StringBuilder();
         String newLine = System.getProperty("line.separator");
 
-        result.append( this.getClass().getName() );
-        result.append( " Object {" );
+        result.append(newLine);
+        result.append( " Message = {" );
         result.append(newLine);
 
         //determine fields declared in this class only (no fields of superclass)
@@ -185,9 +194,10 @@ public class Message implements Serializable {
         for ( Field field : fields  ) {
             result.append("  ");
             try {
-                if(field.getName().equals("signature") || field.getName().equals("publicKey")){
+                if(field.getName().equals("signature") || field.getName().equals("publicKey") || field.getName().equals("publicKeyToCheck")){
                     continue;
                 }
+                result.append("--> ");
                 result.append( field.getName() );
                 result.append(": ");
                 //requires access to private field:

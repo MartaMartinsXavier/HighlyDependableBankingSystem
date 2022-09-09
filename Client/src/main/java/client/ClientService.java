@@ -92,11 +92,12 @@ public class ClientService {
         Message messageToSend=null;
 
 
-        if(!("clientPublicKey" + myClientNumber).equals(pathKeyToCheck)) {
-            messageToSend = createBaseCheckMessage(pathKeyToCheck);
-        }else{
-
-            messageToSend = createBaseMessage();
+        messageToSend = createBaseMessage();
+        try {
+            messageToSend.setPublicKeyToCheck(crypto.RSAKeyGen.readPub(pubKeyPath + pathKeyToCheck));
+        } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException e) {
+            System.out.println("Failed to get desired key");
+            return;
         }
 
 
@@ -119,6 +120,8 @@ public class ClientService {
         if (response.getOperationCode().equals(Command.CHECK)) {
             Account accountToCheck = response.getAccountToCheck();
 
+            PublicKey keyToCheck = response.getPublicKeyToCheck();
+
             myAccount = accountToCheck;
 
             if(detailedPrints){
@@ -132,7 +135,7 @@ public class ClientService {
 
             for (AccountOperation transaction : accountToCheck.getAccountOpHistory()) {
                 //if i am not the sender, then I increase my balance
-                if (!transaction.getSender().equals(getMyPublicKey())){
+                if (!transaction.getSender().equals(keyToCheck)){
                     balanceResult += transaction.getAmount();
 
                     //if i am the sender
@@ -204,7 +207,7 @@ public class ClientService {
 
     }
 
-    public void sendAmount(String keyPath,long amount){
+    public void sendAmount(String keyPath, long amount){
         sendAmount(keyPath, amount, false);
     }
 
@@ -393,7 +396,7 @@ public class ClientService {
     }
 
 
-    private PublicKey getOthersPublicKey(String keyPath) {
+    public static PublicKey getOthersPublicKey(String keyPath) {
         try {
             return crypto.RSAKeyGen.readPub(pubKeyPath + keyPath);
         } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException e) {

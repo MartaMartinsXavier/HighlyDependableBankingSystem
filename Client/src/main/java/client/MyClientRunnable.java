@@ -28,8 +28,8 @@ public class MyClientRunnable implements Runnable {
             Message response = null;
             String messageRecipient = "serverPublicKey" + String.valueOf(id);
             messageToSend.setMessageRecipient(messageRecipient);
-            System.out.println("messageRecipient");
-            System.out.println(messageToSend.getMessageRecipient());
+            //System.out.println("messageRecipient");
+            //System.out.println(messageToSend.getMessageRecipient());
             response = clientCommunication.sendMessage(messageToSend, CommonTypes.getInitialPort() + id);
 
             if (response != null && clientCommunication.verifyResponse(response, String.valueOf(id))){
