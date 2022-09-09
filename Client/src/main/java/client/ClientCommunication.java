@@ -215,7 +215,7 @@ public class ClientCommunication {
 
             //also checks if i am the intended recipient of the message
         if(!Objects.equals(response.getMessageRecipient(), "clientPublicKey" + myClientNumber)){
-            System.out.println("I was not the intended recipient for this message");
+            System.out.println("I was not the intended recipient for this message " + response.getMessageRecipient() + " vs " + "clientPublicKey" + myClientNumber);
             return false;
         }
 

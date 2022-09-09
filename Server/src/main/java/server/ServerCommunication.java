@@ -54,44 +54,92 @@ public class ServerCommunication {
             ObjectInputStream inStream = new ObjectInputStream(clientSocket.getInputStream());
 
             //Read
-            Message receiveMessage = (Message)inStream.readObject();
+            Message receivedMessage = (Message)inStream.readObject();
             Message reply = null;
 
 
-            if(!ServerService.isSignatureValid(receiveMessage,receiveMessage.getPublicKey())) {
-                reply = service.createErrorMessage("Signature authentication failed.", receiveMessage.getPublicKey());
-                if (!Objects.equals(receiveMessage.getMessageRecipient(), "serverPublicKey" + serverId)){
-                    reply = service.createErrorMessage("I was not the intended recipient of this message", receiveMessage.getPublicKey());
+            if(!ServerService.isSignatureValid(receivedMessage, receivedMessage.getPublicKey())) {
+                reply = service.createErrorMessage("Signature authentication failed.", receivedMessage.getPublicKey());
+                if (!Objects.equals(receivedMessage.getMessageRecipient(), "serverPublicKey" + serverId)){
+                    reply = service.createErrorMessage("I was not the intended recipient of this message", receivedMessage.getPublicKey());
                 }
-                System.out.println("message recipient: " +receiveMessage.getMessageRecipient() );
+                System.out.println("message recipient: " +receivedMessage.getMessageRecipient() );
 
             }else{
 
-                //upon receiving a client request and after verification, we broadcast to all servers
-                if(receiveMessage.getOperationCode().equals(Command.CHECK) ||
-                        receiveMessage.getOperationCode().equals(Command.SEND) ||
-                        receiveMessage.getOperationCode().equals(Command.RECEIVE) ||
-                        receiveMessage.getOperationCode().equals(Command.OPEN)){
+//                //upon receiving a client request and after verification, we broadcast to all servers
+//                if(receivedMessage.getOperationCode().equals(Command.CHECK) ||
+//                        receivedMessage.getOperationCode().equals(Command.SEND) ||
+//                        receivedMessage.getOperationCode().equals(Command.RECEIVE) ||
+//                        receivedMessage.getOperationCode().equals(Command.OPEN)){
+//
+//                    //Rebroadcast
+//                    broadcastToAllServers(createMessageWithPiggyback(getMyServerPublicKey(), Command.REBROADCAST, receivedMessage, serverId));
+//                    AuthenticatedDoubleEchoBroadcast.markMessageBroadcasted(receivedMessage);
+//
+//                    //Send Echo
+//                    if(!AuthenticatedDoubleEchoBroadcast.wasMessageEchoed(receivedMessage)){
+//                        AuthenticatedDoubleEchoBroadcast.markMessageEchoed(receivedMessage);
+//                        broadcastToAllServers(createMessageWithPiggyback(getMyServerPublicKey(), Command.ECHO, receivedMessage, serverId));
+//
+//                        //send ECHO to myself
+//                        AuthenticatedDoubleEchoBroadcast.addEcho(receivedMessage);
+//                    }
+//
+//
+//                    // wait for number of echoes >= Byzantine Quorum
+//                    while(AuthenticatedDoubleEchoBroadcast.countEcho(receivedMessage) < CommonTypes.getByzantineQuorum() &&
+//                            !AuthenticatedDoubleEchoBroadcast.wasMessagedReady(receivedMessage)){ // not ready
+//                        try {
+//                            Thread.sleep(50);
+//                        } catch (InterruptedException e) {
+//                            System.out.println("Failed to wait for echoes of nonce " + receivedMessage.getNonce());
+//                            return;
+//                        }
+//                    }
+//
+//                    //Send Ready
+//                    if(!AuthenticatedDoubleEchoBroadcast.wasMessagedReady(receivedMessage)){
+//                        AuthenticatedDoubleEchoBroadcast.markMessageReady(receivedMessage);
+//                        broadcastToAllServers(createMessageWithPiggyback(getMyServerPublicKey(), Command.READY, receivedMessage, serverId));
+//
+//                        //Send ready to myself
+//                        AuthenticatedDoubleEchoBroadcast.addReady(receivedMessage);
+//                    }
+//
+//
+//                    // wait for number of readys >= 2f
+//                    while(AuthenticatedDoubleEchoBroadcast.countEcho(receivedMessage) <= 2 * CommonTypes.getNumberOfFaults() &&
+//                            !AuthenticatedDoubleEchoBroadcast.wasMessageDelivered(receivedMessage)){ // not delivered
+//                        try {
+//                            Thread.sleep(50);
+//                        } catch (InterruptedException e) {
+//                            System.out.println("Failed to wait for readys of nonce " + receivedMessage.getNonce());
+//                            return;
+//                        }
+//                    }
 
-                    broadcastToAllServers(createMessageWithPiggyback(getMyServerPublicKey(), Command.REBROADCAST, receiveMessage, serverId));
+                    //Deliver
+                    //if(!AuthenticatedDoubleEchoBroadcast.wasMessageDelivered(receivedMessage)){
+                        reply = service.process(receivedMessage);
+                    //    AuthenticatedDoubleEchoBroadcast.markMessageDelivered(receivedMessage);
+                    //}
 
-                    reply = service.process(receiveMessage);
 
-                    //Send reply
+               // }else{
+                    if(receivedMessage.getOperationCode().equals(Command.REBROADCAST) ||
+                            receivedMessage.getOperationCode().equals(Command.ECHO) ||
+                            receivedMessage.getOperationCode().equals(Command.READY)){
+                        service.process(receivedMessage);
+                    }
+               // }
+
+                //Send reply
+                if(reply!=null)
                     outStream.writeObject(reply);
-                }else{
-                    service.process(receiveMessage);
-                }
-
             }
-
-
-
-
             clientSocket.close();
             System.out.println("Closing client socket...");
-
-
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
         }

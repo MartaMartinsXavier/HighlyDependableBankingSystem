@@ -187,11 +187,12 @@ public class ServerService {
             return createErrorMessage("Invalid transactionID.", message.getPublicKey());
         }
 
-        if (dest.equals(message.getPublicKey())) {
-            return createErrorMessage("you cannot transfer funds to yourself", message.getPublicKey());
-        }
         if (!sender.equals(message.getPublicKey())) {
             return createErrorMessage("you cannot transfer funds from someone else", message.getPublicKey());
+        }
+
+        if (dest.equals(message.getPublicKey())) {
+            return createErrorMessage("you cannot transfer funds to yourself", message.getPublicKey());
         }
 
         if (amount > senderAccount.getBalance()) {

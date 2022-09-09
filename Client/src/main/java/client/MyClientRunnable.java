@@ -32,7 +32,7 @@ public class MyClientRunnable implements Runnable {
             System.out.println(messageToSend.getMessageRecipient());
             response = clientCommunication.sendMessage(messageToSend, CommonTypes.getInitialPort() + id);
 
-            if (clientCommunication.verifyResponse(response, String.valueOf(id))){
+            if (response != null && clientCommunication.verifyResponse(response, String.valueOf(id))){
                 quorumResponses.add(response);
             }else{
                 System.out.println("Invalid server response");
