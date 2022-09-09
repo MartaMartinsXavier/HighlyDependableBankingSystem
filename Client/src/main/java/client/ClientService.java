@@ -85,12 +85,24 @@ public class ClientService {
     }
 
 
-    public void checkAccount(){
-        checkAccount(true, false);
+    public void checkAccount(String pathKeyToCheck){
+        checkAccount(true, false, pathKeyToCheck);
     }
-    public void checkAccount(boolean detailedPrints, boolean evilFlag) {
-        Message messageToSend = createBaseMessage();
+    public void checkAccount(boolean detailedPrints, boolean evilFlag, String pathKeyToCheck) {
+        Message messageToSend=null;
+
+
+        if(!("clientPublicKey" + myClientNumber).equals(pathKeyToCheck)) {
+            messageToSend = createBaseCheckMessage(pathKeyToCheck);
+        }else{
+
+            messageToSend = createBaseMessage();
+        }
+
+
         messageToSend.setOperationCode(Command.CHECK);
+
+
         if (isMalicious&& evilFlag) {
             System.out.println("sending malicious replay account message on check operation");
             Message response = communication.sendMaliciousDupMessage(messageToSend);
@@ -265,7 +277,7 @@ public class ClientService {
     }
 
     public void receiveAmount(long transferToReceiveID){
-        checkAccount(false, false);
+        checkAccount(false, false, "clientPublicKey"+myClientNumber);
 
         Message messageToSend = createBaseMessage();
 
@@ -352,6 +364,24 @@ public class ClientService {
         }
     }
 
+    public Message createBaseCheckMessage(String pathToOthersPublicKey){
+
+        try {
+            Message messageToSend = new Message(crypto.RSAKeyGen.readPub(pubKeyPath + pathToOthersPublicKey));
+
+            addFreshness(messageToSend);
+
+            messageToSend.setMessageSender("clientPublicKey" + myClientNumber);
+            ClientCommunication.setRid(ClientCommunication.getRid()+1);
+            messageToSend.setRid(ClientCommunication.getRid());
+
+            return messageToSend;
+
+        } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
 
     private PublicKey getMyPublicKey() {
         try {
@@ -434,7 +464,7 @@ public class ClientService {
 
 
     public void replayAttack(){
-        checkAccount(true, true);
+        checkAccount(true, true, "clientPublicKey" +myClientNumber );
 
     }
 

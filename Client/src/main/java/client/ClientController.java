@@ -76,7 +76,9 @@ public class ClientController {
                     break;
 
                 case CHECK:
-                    clientService.checkAccount();
+                    System.out.println("Insert the path to the public key of the account you want to check");
+                    String keyPath1 = scan.next();
+                    clientService.checkAccount(keyPath1);
                     break;
 
                 case SEND:
