@@ -31,7 +31,7 @@ public class ServerApp {
 
 
         System.out.println("my port number is:" + myPortNumber );
-        System.out.println("the number of byzantine servers is: " + numberOfByzantineServers );
+        System.out.println("the number of tolerated byzantine servers is: " + numberOfByzantineServers );
 
 
         if (mode.toLowerCase().startsWith("m")) {
