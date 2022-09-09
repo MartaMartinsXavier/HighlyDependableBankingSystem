@@ -10,6 +10,9 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.security.NoSuchAlgorithmException;
+import java.security.PublicKey;
+import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
@@ -19,8 +22,9 @@ public class ServerCommunication {
 
     private ServerSocket serverSocket;
     private ServerService service;
-    private String serverId;
+    private static String serverId;
     public static final String host = "localhost";
+    private static String pubKeyPath = "../CommonTypes/src/main/java/";
 
     ExecutorService executor= Executors.newFixedThreadPool(CommonTypes.getTotalNumberOfServers());
 
@@ -51,27 +55,37 @@ public class ServerCommunication {
 
             //Read
             Message receiveMessage = (Message)inStream.readObject();
-            Message reply;
+            Message reply = null;
 
 
-            if(!service.isSignatureValid(receiveMessage,receiveMessage.getPublicKey())) {
+            if(!ServerService.isSignatureValid(receiveMessage,receiveMessage.getPublicKey())) {
                 reply = service.createErrorMessage("Signature authentication failed.", receiveMessage.getPublicKey());
-                if (receiveMessage.getMessageRecipient()!= "serverPublicKey"+ serverId){
+                if (!Objects.equals(receiveMessage.getMessageRecipient(), "serverPublicKey" + serverId)){
                     reply = service.createErrorMessage("I was not the intended recipient of this message", receiveMessage.getPublicKey());
                 }
                 System.out.println("message recipient: " +receiveMessage.getMessageRecipient() );
 
+            }else{
 
                 //upon receiving a client request and after verification, we broadcast to all servers
-                broadcastToAllServers(receiveMessage);
+                if(receiveMessage.getOperationCode().equals(Command.CHECK) ||
+                        receiveMessage.getOperationCode().equals(Command.SEND) ||
+                        receiveMessage.getOperationCode().equals(Command.RECEIVE) ||
+                        receiveMessage.getOperationCode().equals(Command.OPEN)){
 
-            }else{
-                reply = service.process(receiveMessage);
+                    broadcastToAllServers(createMessageWithPiggyback(getMyServerPublicKey(), Command.REBROADCAST, receiveMessage, serverId));
+
+                    reply = service.process(receiveMessage);
+
+                    //Send reply
+                    outStream.writeObject(reply);
+                }else{
+                    service.process(receiveMessage);
+                }
+
             }
 
 
-            //Send reply
-            outStream.writeObject(reply);
 
 
             clientSocket.close();
@@ -86,7 +100,7 @@ public class ServerCommunication {
 
 
 
-    public Message sendMessage(Message message, int port) {
+    public void sendMessageWithoutResponse(Message message, int port) {
         System.out.println("...Sending message  to " + String.valueOf(port));
 
         try {
@@ -95,7 +109,6 @@ public class ServerCommunication {
             System.out.println("Failed to sign message");
         }
 
-        Message response = null;
         ObjectOutputStream outStream = null;
         ObjectInputStream inStream = null;
 
@@ -109,8 +122,6 @@ public class ServerCommunication {
             //Receive
 
             inStream = new ObjectInputStream(mySocket.getInputStream());
-            response = (Message)inStream.readObject();
-            System.out.println(response);
 
             outStream.close();
             inStream.close();
@@ -131,39 +142,70 @@ public class ServerCommunication {
                 e.printStackTrace();
             }
         }
-        return response;
     }
 
 
 
 
 
-    public Message broadcastToAllServers(Message message) {
-
-        ArrayList<Message> quorumResponses = new ArrayList<>();
-        int byzantineQuorum = CommonTypes.getByzantineQuorum();
+    public void broadcastToAllServers(Message message) {
 
         for (int i=0 ; i< CommonTypes.getTotalNumberOfServers() ; i++) {
 
             try{
                 //this -> passes the current instance of ServerCommunication as an argument
-                executor.execute(new MyServerRunnable(i, quorumResponses, this, message.deepCopy()));
+                executor.execute(new MyServerRunnable(i, this, message.deepCopy()));
             }catch(Exception e){
                 e.printStackTrace();
             }
-
         }
-
-        while (quorumResponses.size() < byzantineQuorum){
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        return message;
     }
 
+
+    public boolean verifyResponse(Message response, String i){
+        PublicKey publicKey = null;
+
+        //also checks if i am the intended recipient of the message
+        if(!Objects.equals(response.getMessageRecipient(), "serverPublicKey" + serverId)){
+            System.out.println("I was not the intended recipient for this message");
+            return false;
+        }
+
+
+        publicKey = getServerPublicKey(i);
+
+
+        //check if response is fresh and signature is valid
+        return ServerService.isFresh(response) && ServerService.isSignatureValid(response, publicKey);
+    }
+
+    public static PublicKey getServerPublicKey(String id){
+        try {
+            return crypto.RSAKeyGen.readPub(pubKeyPath+"serverPublicKey" + id);
+        } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException e) {
+            System.out.println(id + " Failed to load key for " + id);
+        }
+        return null;
+    }
+
+    public static PublicKey getMyServerPublicKey(){
+        return getServerPublicKey(serverId);
+    }
+
+
+
+    public Message createMessageWithPiggyback(PublicKey publicKey,Command operationCode, Message piggyback, String myServerID){
+
+        Message messageToSend = new Message(publicKey);
+        messageToSend.setOperationCode(operationCode);
+
+        ServerService.addFreshness(messageToSend);
+
+        messageToSend.setPiggyBackMessage(piggyback);
+        messageToSend.setMessageSender("serverPublicKey" + String.valueOf(myServerID));
+
+        return messageToSend;
+    }
 
 }
 

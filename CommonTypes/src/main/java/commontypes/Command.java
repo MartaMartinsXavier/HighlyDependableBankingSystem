@@ -10,7 +10,7 @@ public enum Command implements Serializable {
     ERROR("error"),
     REBROADCAST("rebroadcast"),
     ECHO("echo"),
-    REPLY("reply");
+    READY("ready");
 
 
     private String text;

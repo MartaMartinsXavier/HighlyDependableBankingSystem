@@ -18,6 +18,7 @@ public class Message implements Serializable {
     private String errorMessage;
     private String messageRecipient;
     private String messageSender;
+    private Message piggyBackMessage;
 
 
     //General Constructor
@@ -118,6 +119,13 @@ public class Message implements Serializable {
         this.messageSender = messageSender;
     }
 
+    public Message getPiggyBackMessage() {
+        return piggyBackMessage;
+    }
+
+    public void setPiggyBackMessage(Message piggyBackMessage) {
+        this.piggyBackMessage = piggyBackMessage;
+    }
 
     public byte[] getBytesToSign(){
 
@@ -244,7 +252,29 @@ public class Message implements Serializable {
 
     }
 
+    @Override
+    public boolean equals(Object obj) {
+        // check if the reference is the same
+        if(obj == this)
+            return true;
 
+        // check if its the same class
+        if( obj == null || obj.getClass()!= getClass()) {
+            return false;
+        }
+        Message message = (Message) obj;
+
+        return Objects.equals(operationCode, message.getOperationCode()) &&
+                Objects.equals(publicKey, message.getPublicKey()) &&
+                Objects.equals(timestamp, message.getTimestamp()) &&
+                Objects.equals(nonce, message.getNonce()) &&
+                Objects.equals(rid, message.getRid()) &&
+                Objects.equals(transferDetails, message.getTransferDetails()) &&
+                Objects.equals(accountToCheck, message.getAccountToCheck()) &&
+                Objects.equals(errorMessage, message.getErrorMessage()) &&
+                Objects.equals(piggyBackMessage, message.getPiggyBackMessage());
+
+    }
 }
 
 

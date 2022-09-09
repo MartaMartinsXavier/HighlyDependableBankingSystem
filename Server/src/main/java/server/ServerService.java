@@ -17,11 +17,11 @@ import static java.lang.System.currentTimeMillis;
 
 public class ServerService {
     private ArrayList<Account> allAccounts;
-    private ArrayList<String> allNonces;
-    String myPrivkeyPath;
+    private static ArrayList<String> allNonces;
+    static String myPrivkeyPath;
     private int myServerID;
 
-    Random random = new Random();
+    private static Random random = new Random();
     private static final int MAX_TIMESTAMP = 10000;
 
 
@@ -75,15 +75,15 @@ public class ServerService {
                 break;
 
             case REBROADCAST:
-                reply = rebroadcastHandler(message);
+                rebroadcastHandler(message);
                 break;
 
             case ECHO:
-                reply = echoHandler(message);
+                echoHandler(message);
                 break;
 
-            case REPLY:
-                reply = replyHandler(message);
+            case READY:
+                readyHandler(message);
                 break;
 
             default:
@@ -119,7 +119,6 @@ public class ServerService {
 
     public Message createAccount(Message message) {
 
-        System.out.println(message.getPublicKey());
 
         if(!isSignatureValid(message,message.getPublicKey())) {
             System.out.println("Signature authentication failed");
@@ -263,30 +262,43 @@ public class ServerService {
      * ************************************************************************************/
 
 
-    public Message rebroadcastHandler(Message message){
+    public void rebroadcastHandler(Message message){
 
+        System.out.println("received rebroadcast from " + message.getMessageSender());
         //confirm this was sent by a server!!
         if (!sentByServer(message)){
-            System.out.println("A unknown process tried to rebroadcast");
+            System.out.println(" NOT VERIFIED YET A unknown process tried to rebroadcast");
         }
 
         if(!isSignatureValid(message,message.getPublicKey()))
-            return createErrorMessage("Signature authentication failed.", message.getPublicKey());
-
-
-        Account accountToCheck = findAccount(message.getPublicKey());
-        if(accountToCheck == null)
-            return createErrorMessage("Account does not exist.", message.getPublicKey());
-
-        Message messageToReply = createBaseMessage(message.getPublicKey(),Command.CHECK);
-
-        messageToReply.setAccountToCheck(accountToCheck);
-
-        return messageToReply;
+            System.out.println("Signature authentication failed.");
 
 
     }
 
+    public void echoHandler(Message message){
+
+        //confirm this was sent by a server!!
+        if (!sentByServer(message)){
+            System.out.println("A unknown process tried to send an echo message");
+        }
+        Message messageToReply = createBaseMessage(message.getPublicKey(),Command.CHECK);
+
+        //which server sent this?
+        //if i havent received an echo for this ID? from this server -> add to an ack list
+
+    }
+
+    public void readyHandler(Message message){
+
+        //confirm this was sent by a server!!
+        if (!sentByServer(message)){
+            System.out.println("A unknown process tried to send a ready message");
+        }
+        Message messageToReply = createBaseMessage(message.getPublicKey(),Command.CHECK);
+
+
+    }
 
 
     /* **************************************************************************************
@@ -377,7 +389,7 @@ public class ServerService {
     /**
      * Responsible for adding a nonce and a timestamp to a message
      */
-    private void addFreshness(Message response) {
+    public static void addFreshness(Message response) {
         response.setTimestamp(currentTimeMillis());
         response.setNonce("server" + random.nextInt());
     }
@@ -440,19 +452,8 @@ public class ServerService {
 
 
     public static boolean sentByServer(Message message){
-
-
-
-
-
+        return false;
     }
-
-
-
-
-
-
-
 
 
 

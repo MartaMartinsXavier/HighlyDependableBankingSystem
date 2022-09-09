@@ -115,6 +115,15 @@ public class AccountOperation implements Serializable {
 
     @Override
     public boolean equals(Object obj) {
+        // check if the reference is the same
+        if(obj == this)
+            return true;
+
+        // check if its the same class
+        if( obj == null || obj.getClass()!= getClass()) {
+            return false;
+        }
+
         AccountOperation other = (AccountOperation) obj;
         return (transactionID == other.transactionID);
     }
