@@ -3,7 +3,7 @@ package commontypes;
 import java.io.Serializable;
 
 public class CommonTypes implements Serializable {
-    private static final int initialPort = 5000;
+    private static final int initialPort = 6884;
     private static int totalNumberOfServers = 0;
     private static int byzantineQuorum = 0;
     private static int numberOfFaults = 0;

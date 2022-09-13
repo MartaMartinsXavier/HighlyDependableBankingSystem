@@ -19,7 +19,6 @@ public class AccountOperation implements Serializable {
     private long amount;
     private String senderSignature;
     private int senderWts;
-
     private Verification verification;
 
     Random random = new Random();

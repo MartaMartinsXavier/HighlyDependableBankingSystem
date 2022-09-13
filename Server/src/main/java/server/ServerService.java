@@ -269,6 +269,7 @@ public class ServerService {
         Message receivedMessage = message.getPiggyBackMessage();
         Message echoMessage = null;
 
+        //we check the message sender, we check its a client/server and we check the signature
         if(!isBroadcastedMessageValid(message) || !isPiggyBackMessageValid(receivedMessage)){
             System.out.println("Ready msg verification failed");
             return;
@@ -301,7 +302,7 @@ public class ServerService {
 
         int echoCount = AuthenticatedDoubleEchoBroadcast.addEcho(message);
 
-        // if not echoed, and quorum is met, then broadcast echo
+        // if not readied, and quorum is met, then broadcast ready
         if (    echoCount >= CommonTypes.getByzantineQuorum() &&
                 !AuthenticatedDoubleEchoBroadcast.wasMessagedReady(receivedMessage)){
 
@@ -355,7 +356,7 @@ public class ServerService {
 
     public boolean isPiggyBackMessageValid(Message message){
         if(!Objects.equals(getOtherPublicKey(message.getMessageSender()),(message.getPublicKey()))){
-            System.out.println("Server " + message.getMessageSender() + " identity failed to check");
+            System.out.println("Client " + message.getMessageSender() + " identity failed to check");
             return false;
         }
         if(!isSignatureValid(message, message.getPublicKey())){

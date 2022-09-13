@@ -41,7 +41,6 @@ public class ClientApp {
 
 
 
-
     public static void startClientController(boolean isMalicious, String myClientNumber) {
         ClientController clientController = new ClientController(isMalicious, myClientNumber);
 
@@ -57,6 +56,5 @@ public class ClientApp {
                 ClientController.parseCommand();
             }
         }
-
     }
 }

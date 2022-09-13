@@ -29,8 +29,6 @@ public class EncryptAndStorePrivKey {
     }
 
 
-
-
     public static PrivateKey readFile(String pathToRead){
 
         FileInputStream fileInputStream = null;
@@ -44,7 +42,6 @@ public class EncryptAndStorePrivKey {
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
         }
-
 
         try {
             fileInputStream = new FileInputStream(pathToRead);
@@ -81,10 +78,6 @@ public class EncryptAndStorePrivKey {
     }
 
 
-
-
-
-
     public static void writeToFile(PrivateKey privateKeyToStore , String pathToWrite){
 
         File file = new File(pathToWrite);
@@ -95,7 +88,6 @@ public class EncryptAndStorePrivKey {
         }
 
         try {
-
             //createNewFile() returns true if file was successfully created ; returns false if file already exists
             if (!file.createNewFile())
                 System.out.println("Failed to create new file");
@@ -177,12 +169,7 @@ public class EncryptAndStorePrivKey {
         }
 
         writeToFile(privKey, privKeyPath);
-
-
     }
-
-
-
 
 
 
@@ -204,8 +191,6 @@ public class EncryptAndStorePrivKey {
         }
         return null;
     }
-
-
 
 
 

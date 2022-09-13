@@ -152,8 +152,6 @@ public class ClientService {
                 System.out.println("Account balance is : " + balanceResult);
                 System.out.println("----------------------------------------");
             }
-
-
             // all past executed transactions
             if(accountToCheck.getAccountOpHistory().size() ==0){
                 if(detailedPrints){
@@ -161,7 +159,6 @@ public class ClientService {
                     System.out.println("You have no past transactions");
                     System.out.println("-----------------------------------");
                 }
-
             }
             else{
                 if(detailedPrints){
@@ -198,13 +195,10 @@ public class ClientService {
                     }
                 }
             }
-
         } else if (response.getOperationCode().equals(Command.ERROR)) {
             System.out.println(response.getErrorMessage());
             ClientCommunication.setWts(ClientCommunication.getWts()-1);
         }
-
-
     }
 
     public void sendAmount(String keyPath, long amount){
@@ -213,7 +207,6 @@ public class ClientService {
 
     public void sendAmount(String keyPath, long amount, boolean evilFlag) {
         Message messageToSend = createBaseMessage();
-
         PublicKey keyDest = getOthersPublicKey(keyPath);
 
         // increase writing timestamp
@@ -230,7 +223,6 @@ public class ClientService {
             } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException e) {
                 e.printStackTrace();
             }
-
 
             try {
                 transfer = new AccountOperation(amount, targetPublicKey, keyPath, getMyPublicKey(), "clientPublicKey" + myClientNumber, ClientCommunication.getWts());
