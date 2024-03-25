@@ -1,5 +1,3 @@
-
-
 package crypto;
 
 
@@ -173,24 +171,24 @@ public class EncryptAndStorePrivKey {
 
 
 
-    //creates a special secret key that is a mix of password and salt
-    public static byte[] createSaltedPassKey(char[] password, byte[] salt) {
-        PBEKeySpec spec = new PBEKeySpec(password, salt, 100, 256);
+        //creates a special secret key that is a mix of password and salt
+        public static byte[] createSaltedPassKey(char[] password, byte[] salt) {
+            PBEKeySpec spec = new PBEKeySpec(password, salt, 100, 256);
 
-        try {
-            SecretKeyFactory specialKey = SecretKeyFactory.getInstance("PBEWithSHA1AndDESede");
+            try {
+                SecretKeyFactory specialKey = SecretKeyFactory.getInstance("PBEWithSHA1AndDESede");
 
-            return specialKey.generateSecret(spec).getEncoded();
+                return specialKey.generateSecret(spec).getEncoded();
 
-        } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
-            System.out.println("Error while hashing a password: " + e.getMessage());
+            } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
+                System.out.println("Error while hashing a password: " + e.getMessage());
 
-        }finally {
-            //deletes the password
-            spec.clearPassword();
+            }finally {
+                //deletes the password
+                spec.clearPassword();
+            }
+            return null;
         }
-        return null;
-    }
 
 
 

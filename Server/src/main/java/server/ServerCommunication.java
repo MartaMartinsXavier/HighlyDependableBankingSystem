@@ -57,7 +57,7 @@ public class ServerCommunication {
 
             if(!ServerService.isSignatureValid(receivedMessage, receivedMessage.getPublicKey())) {
                 reply = service.createErrorMessage("Signature authentication failed.", receivedMessage.getPublicKey());
-                if (!Objects.equals(receivedMessage.getMessageRecipient(), "serverPublicKey" + serverId)){
+                    if (!Objects.equals(receivedMessage.getMessageRecipient(), "serverPublicKey" + serverId)){
                     reply = service.createErrorMessage("I was not the intended recipient of this message", receivedMessage.getPublicKey());
                 }
                 //System.out.println("message recipient: " +receivedMessage.getMessageRecipient() );

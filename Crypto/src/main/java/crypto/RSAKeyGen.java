@@ -1,9 +1,6 @@
 package crypto;
 
-
 import javax.crypto.spec.SecretKeySpec;
-
-import java.beans.beancontext.BeanContextChild;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
